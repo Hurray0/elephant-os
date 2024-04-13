@@ -13,7 +13,8 @@ clean: $(DIRS)
 # run目标，让用户选择一个目录来执行make run
 run:
 	@printf "Available directories:\n"; \
-	$(foreach dir,$(DIRS),printf "%s\n" $(dir);)
+	$(foreach dir,$(DIRS),printf "%s\t%s\n" $(dir) "`head -n 1 $(dir)/README.md`";)
+	@printf "\n"
 	@read -p "Enter a directory number to run: " number; \
 	dir="./$$number.*"; \
 	if [ -d $$dir ]; then \
