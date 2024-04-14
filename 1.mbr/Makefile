@@ -1,4 +1,4 @@
-.PHONY: all run clean
+.PHONY: all run clean virtualbox vb
 
 all: mbr.bin hd60M.img
 
@@ -12,9 +12,16 @@ hd60M.img: mbr.bin
 run: all
 	bochs -f bochsrc.disk
 
+virtualbox: all
+	# 创建virtualbox虚拟机构建的硬盘
+	VBoxManage convertfromraw --format VDI hd60M.img hd60M.vdi
+
+vb: virtualbox
+
 clean:
 	rm -f *.bin
-	rm -f hd60M.img
+	rm -f *.img
 	rm -f *.log
-	rm -f hd60M.img.lock
+	rm -f *.lock
 	rm -f .*.un~
+	rm -f *.vdi

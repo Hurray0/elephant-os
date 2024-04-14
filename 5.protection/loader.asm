@@ -64,6 +64,11 @@ loader_start:
     mov cr0, eax
 
     jmp dword SELECTOR_CODE:p_mode_start ; 刷新流水线，进入保护模式
+    ; 这里不省略代码或使用jmp p_mode_start而使用远转移：
+    ; 是因为既要改变代码段描述符缓冲寄存器的值，又要刷新流水线（当前流水线上运行的16位代码）
+    ; call/jmp/ret等可以改变cs值，可以刷新流水线
+    ; 重新引用一个段，可以更新段缓冲寄存器的值
+
 
 [bits 32]
 p_mode_start:

@@ -22,3 +22,8 @@ run:
 	else \
 		echo "Directory $$dir does not exist."; \
 	fi
+
+vb: virtualbox
+
+virtualbox: $(DIRS)
+	$(foreach dir,$(DIRS),$(MAKE) -C $(dir) virtualbox;)
