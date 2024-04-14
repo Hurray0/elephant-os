@@ -1,0 +1,6 @@
+*.log
+*.img
+*.bin
+*.o
+*.lock
+.*.un~
