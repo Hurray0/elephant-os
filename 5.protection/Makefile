@@ -3,18 +3,18 @@
 all: mbr.bin loader.bin hd60M.img
 
 mbr.bin: mbr.asm
-	nasm -o mbr.bin mbr.asm -I ./
+	@nasm -o mbr.bin mbr.asm -I ./
 
 loader.bin: loader.asm
-	nasm -o loader.bin loader.asm -I ./
+	@nasm -o loader.bin loader.asm -I ./
 
 hd60M.img: mbr.bin loader.bin
-	if [ ! -f hd60M.img ]; then bximage -hd=60M -func="create" -q hd60M.img; fi
-	dd if=mbr.bin of=hd60M.img bs=512 count=1 conv=notrunc
-	dd if=loader.bin of=hd60M.img bs=512 count=4 seek=2 conv=notrunc
+	@if [ ! -f hd60M.img ]; then bximage -hd=60M -func="create" -q hd60M.img; fi
+	@dd if=mbr.bin of=hd60M.img bs=512 count=1 conv=notrunc
+	@dd if=loader.bin of=hd60M.img bs=512 count=4 seek=2 conv=notrunc
 
 run: all
-	bochs -f bochsrc.disk
+	@bochs -f bochsrc.disk
 
 virtualbox: all
 	# 创建virtualbox虚拟机构建的硬盘
@@ -23,9 +23,9 @@ virtualbox: all
 vb: virtualbox
 
 clean:
-	rm -f *.bin
-	rm -f *.img
-	rm -f *.log
-	rm -f *.lock
-	rm -f .*.un~
-	rm -f *.vdi
+	@rm -f *.bin
+	@rm -f *.img
+	@rm -f *.log
+	@rm -f *.lock
+	@rm -f .*.un~
+	@rm -f *.vdi

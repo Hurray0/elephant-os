@@ -5,10 +5,10 @@ DIRS := $(shell find . -maxdepth 1 -type d -name '[0-9]*.*' | sort)
 
 # 默认目标，依赖于所有目录的make目标
 all: $(DIRS)
-	$(foreach dir,$(DIRS),$(MAKE) -C $(dir);)
+	@$(foreach dir,$(DIRS),$(MAKE) -C $(dir);)
 
 clean: $(DIRS)
-	$(foreach dir,$(DIRS),$(MAKE) -C $(dir) clean;)
+	@$(foreach dir,$(DIRS),$(MAKE) -C $(dir) clean;)
 
 # run目标，让用户选择一个目录来执行make run
 run:
