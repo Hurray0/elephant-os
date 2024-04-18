@@ -27,3 +27,6 @@ vb: virtualbox
 
 virtualbox: $(DIRS)
 	$(foreach dir,$(DIRS),$(MAKE) -C $(dir) virtualbox;)
+
+env:
+	$(foreach dir,$(DIRS),$(MAKE) -C $(dir) env;)
