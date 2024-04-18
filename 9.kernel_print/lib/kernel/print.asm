@@ -13,43 +13,44 @@ global put_char
 global put_str
 global put_int
 
+; 打印32位无符号整数，16进制
 put_int:
-    pushad
-    mov ebp, esp
-    mov eax, [ebp + 4 * 9]
-    mov edx, eax
-    mov edi, 7
-    mov ecx, 8
-    mov ebx, put_int_buffer
+    pushad                       ; 保存寄存器
+    mov ebp, esp                 ; ebp指向栈顶
+    mov eax, [ebp + 4 * 9]       ; 获取参数. 4 * 9是因为pushad压栈了8个寄存器，加上返回地址共9个
+    mov edx, eax                 ; 使用edx做中转
+    mov edi, 7                   ; edi指向put_int_buffer的最后一个位置
+    mov ecx, 8                   ; 循环8次，每次处理4位
+    mov ebx, put_int_buffer      ; ebx指向put_int_buffer
 
 .16based_4bits:
-    and edx, 0x0000000F
-    cmp edx, 9
-    jg .is_A2F
-    add edx, '0'
+    and edx, 0x0000000F          ; 取低4位
+    cmp edx, 9                   ; 判断是否大于9
+    jg .is_A2F                   ; 大于9，转换为A-F
+    add edx, '0'                 ; 小于9，转换为字符
     jmp .store
 
 .is_A2F:
-    sub edx, 10
-    add edx, 'A'
+    sub edx, 10                  ; 减去10
+    add edx, 'A'                 ; 转换为A-F
 
 .store:
-    mov [ebx + edi], dl
+    mov [ebx + edi], dl          ; dl是低8位，存入put_int_buffer
     dec edi
     shr eax, 4
     mov edx, eax
     loop .16based_4bits
 
 .ready_print:
-    inc edi
+    inc edi                      ; 此时edi为-1，需要加1, 指向第一个字符
 
 .skip_prefix_0:
-    cmp edi, 8
+    cmp edi, 8                   ; 如果已经到第9位，说明前面全是0，需要直接输出0
     je .full0
 
-.go_on_skip:
+.go_on_skip:                     ; 跳过前导0. eg: 0000000F -> F
     mov cl, [put_int_buffer + edi]
-    inc edi
+    inc edi                      ; edi + 1
     cmp cl, '0'
     je .skip_prefix_0
     dec edi
@@ -57,29 +58,29 @@ put_int:
 
 .full0:
     mov cl, '0'
-.put_each_num:
-    push ecx
+.put_each_num:                   ; 逐个打印
+    push ecx                     ; 函数参数压栈，也就是要打印的字符
     call put_char
     add esp, 4
     inc edi
-    mov cl, [put_int_buffer + edi]
-    cmp edi, 8
+    mov cl, [put_int_buffer + edi] ; 取下一个字符
+    cmp edi, 8                   ; 判断是否打印完毕, 8位数则打印完毕
     jl .put_each_num
     popad
     ret
 
 ; 字符串打印函数，基于put_char封装
 put_str:
-    push ebx
+    push ebx                     ; 保存寄存器
     push ecx
-    xor ecx, ecx
-    mov ebx, [esp + 12]
+    xor ecx, ecx                 ; ecx = 0
+    mov ebx, [esp + 12]          ; 获取参数，字符串地址
 
 .go_on:
     mov cl, [ebx]
-    cmp cl, 0
+    cmp cl, 0                    ; 判断是否结束\0
     jz .str_over
-    push ecx
+    push ecx                     ; 函数参数压栈
     call put_char
     add esp, 4
     inc ebx
@@ -109,40 +110,40 @@ put_char:
     mov dx, 0x03d5
     in al, dx
 
-    mov bx, ax
-    mov ecx, [esp + 36]
+    mov bx, ax                  ; bx = 光标位置
+    mov ecx, [esp + 36]         ; 获取参数，字符
 
-    cmp cl, 0xd
+    cmp cl, 0xd                 ; 回车键
     jz .is_carriage_return
-    cmp cl, 0xa
+    cmp cl, 0xa                 ; 换行键
     jz .is_line_feed
 
-    cmp cl, 0x8
+    cmp cl, 0x8                 ; 退格键
     jz .is_backspace
-    jmp .put_other
+    jmp .put_other              ; 其他字符
 
 .is_backspace:
-    dec bx
-    shl bx, 1
+    dec bx                      ; 光标左移
+    shl bx, 1                   ; 乘以2, 表示光标对应显存的偏移字节（一个字符占2个字节）
 
-    mov byte [gs:bx], 0x20
+    mov byte [gs:bx], 0x20     ; 写入空格
     inc bx
-    mov byte [gs:bx], 0x07
-    shr bx, 1
+    mov byte [gs:bx], 0x07     ; 颜色
+    shr bx, 1                  ; 除以2，恢复光标位置
     jmp .set_cursor
 
 .put_other:
-    shl bx, 1
-    mov [gs:bx], cl
+    shl bx, 1                  ; 乘以2, 因为一个字符占2个字节
+    mov [gs:bx], cl            ; 写入字符
     inc bx
-    mov byte [gs:bx], 0x07
-    shr bx, 1
+    mov byte [gs:bx], 0x07     ; 颜色
+    shr bx, 1                  ; 除以2
     inc bx
-    cmp bx, 2000
+    cmp bx, 2000               ; 判断是否超出屏幕, 80 * 25 = 2000, 如果超出则滚屏（\r\n+滚屏）
     jl .set_cursor
 
-.is_line_feed:
-.is_carriage_return:
+.is_line_feed:                 ; 换行
+.is_carriage_return:           ; 回车, 只需要处理光标位置到行首
     xor dx, dx
     mov ax, bx
     mov si, 80
@@ -151,30 +152,30 @@ put_char:
 
     sub bx, dx
 
-.is_carriage_return_end:
+.is_carriage_return_end:      ; 回车键处理完毕，处理换行
     add bx, 80
-    cmp bx, 2000
+    cmp bx, 2000              ; 判断是否超出屏幕
 .is_line_feed_end:
     jl .set_cursor
 
 .roll_screeen:
-    cld 
-    mov ecx, 960
+    cld                       ; 清空方向
+    mov ecx, 960              ; 搬运次数： 需要搬运的字符 2000 - 80 = 1920, 共3840字节, 每次搬运4字节，所以需要搬运960次
 
-    mov esi, 0xc00b80a0
-    mov edi, 0xc00b8000
-    rep movsd
+    mov esi, 0xc00b80a0       ; 源地址
+    mov edi, 0xc00b8000       ; 目的地址
+    rep movsd                 ; 搬运
 
-    mov ebx, 3840
-    mov ecx, 80
+    mov ebx, 3840             ; 最后一行首字符位置
+    mov ecx, 80               ; 80个字符
 
-.cls:
-    mov word [gs:ebx], 0x0720
+.cls:                              ; 清空最后一行
+    mov word [gs:ebx], 0x0720      ; 空格
     add ebx, 2
     loop .cls
-    mov bx, 1920
+    mov bx, 1920                   ; 光标位置
 
-.set_cursor:
+.set_cursor:                       ; 设置光标位置, bx = 光标位置
     mov dx, 0x03d4
     mov al, 0x0e
     out dx, al
