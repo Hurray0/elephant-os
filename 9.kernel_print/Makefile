@@ -1,4 +1,4 @@
-.PHONY: kernel boot
+.PHONY: kernel boot # 伪目标，不是文件名
 
 all: boot disk env
 
@@ -8,8 +8,10 @@ boot: boot/mbr.asm boot/loader.asm
 	@nasm -o build/loader.bin boot/loader.asm -I ./include/
 
 kernel: kernel/main.c
-	@gcc -m32 -c -o build/main.o kernel/main.c
-	@ld -m elf_i386 build/main.o -Ttext 0c0001500 -e main -o build/kernel.bin
+	@mkdir -p build
+	@gcc -m32 -c -o build/main.o kernel/main.c -I ./lib/kernel/ -I ./lib/
+	@nasm -f elf -o build/print.o lib/kernel/print.asm  # 这里要用elf格式
+	@ld -m elf_i386 -Ttext 0c0001500 -e main -o build/kernel.bin build/main.o build/print.o
 
 disk: boot kernel
 	@if [ ! -f build/hd60M.img ]; then bximage -hd=60M -func="create" -q build/hd60M.img; fi
@@ -36,6 +38,7 @@ env:
 	elif [ $$os = "Linux" ]; then \
 		sed -i 's/^display_library: sdl2/#display_library: sdl2/' bochsrc.disk; \
 	fi
+
 
 clean:
 	@rm -rf build
