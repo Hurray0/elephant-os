@@ -5,3 +5,4 @@
 *.lock
 .*.un~
 *.vdi
+build/

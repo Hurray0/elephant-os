@@ -1,6 +1,13 @@
-.PHONY: all run clean
+.PHONY: all run clean hd60M.img
 
 all: mbr.bin loader.bin hd60M.img env
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+	OS = "mac"
+else
+	OS = "linux"
+endif
 
 mbr.bin: mbr.asm
 	@nasm -o mbr.bin mbr.asm -I ./
@@ -16,25 +23,29 @@ hd60M.img: mbr.bin loader.bin
 run: all
 	@bochs -f bochsrc.disk
 
+# 创建virtualbox虚拟机构建的硬盘
 virtualbox: all
-	# 创建virtualbox虚拟机构建的硬盘
-	VBoxManage convertfromraw --format VDI hd60M.img hd60M.vdi
+	@VBoxManage convertfromraw --format VDI hd60M.img hd60M.vdi
 
 vb: virtualbox
 
-# 对于macOS，需要将存在的"#display_library: sdl2"取消注释；对于CentOS, 需要添加注释
-# 首先判断操作系统，然后根据操作系统执行不同的命令
-# 遍历所有目录，使用sed命令修改bochsrc.disk文件
+# 修改bochsrc.disk文件，适配不同的操作系统
 env:
-	@os=`uname -s`; \
-	if [ $$os = "Darwin" ]; then \
+	@if [ $(OS) = "mac" ]; then \
 		sed -i '' 's/^#display_library: sdl2/display_library: sdl2/' bochsrc.disk; \
-	elif [ $$os = "Linux" ]; then \
+	elif [ $(OS) = "linux" ]; then \
 		sed -i 's/^display_library: sdl2/#display_library: sdl2/' bochsrc.disk; \
 	fi
 
+# 恢复到原始状态
+unenv:
+	@if [ $(OS) = "mac" ]; then \
+		sed -i '' 's/^display_library: sdl2/#display_library: sdl2/' bochsrc.disk; \
+	else \
+		sed -i 's/^display_library: sdl2/#display_library: sdl2/' bochsrc.disk; \
+	fi
 
-clean:
+clean: unenv
 	@rm -f *.bin
 	@rm -f *.img
 	@rm -f *.log
