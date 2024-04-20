@@ -1,4 +1,4 @@
-.PHONY: kernel boot # 伪目标，不是文件名
+.PHONY: all lib kernel # 伪目标，不是文件名
 
 BUILD_DIR = build
 ENTRY_POINT = 0xc0001500
@@ -8,8 +8,8 @@ ASLIB = -I ./boot/include/
 ASFLAGS = -f elf
 LDFLAGS = -m elf_i386 -Ttext $(ENTRY_POINT) -e main
 CFLAGS = -m32 -c $(LIB) -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -mno-sse # 这里加上-mno-sse是为了解决macOS下编译时出现的错误
-OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/print.o $(BUILD_DIR)/interrupt.o $(BUILD_DIR)/init.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/timer.o $(BUILD_DIR)/debug.o $(BUILD_DIR)/string.o
-all: mk_dir build debug-asm disk env
+
+all: $(BUILD_DIR)/hd60M.img debug-asm env
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
@@ -22,36 +22,40 @@ else
 	LD = ld
 endif
 
-mk_dir:
-	@mkdir -p $(BUILD_DIR)
-	@if [ ! -f $(BUILD_DIR)/hd60M.img ]; then bximage -hd=60M -func="create" -q $(BUILD_DIR)/hd60M.img; fi
+build:
+	mkdir -p $(BUILD_DIR)
 
 ################ c代码编译 ################
-$(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h lib/stdint.h
+OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/interrupt.o $(BUILD_DIR)/init.o $(BUILD_DIR)/timer.o $(BUILD_DIR)/debug.o $(BUILD_DIR)/string.o
+$(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/interrupt.o: kernel/interrupt.c
+$(BUILD_DIR)/interrupt.o: kernel/interrupt.c kernel/global.h lib/kernel/io.h lib/kernel/print.h lib/stdint.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/init.o: kernel/init.c
+$(BUILD_DIR)/init.o: kernel/init.c lib/kernel/print.h kernel/interrupt.h device/timer.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/timer.o: device/timer.c device/timer.h lib/kernel/io.h lib/kernel/print.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/debug.o: kernel/debug.c lib/kernel/print.h
+$(BUILD_DIR)/debug.o: kernel/debug.c kernel/debug.h lib/kernel/print.h kernel/interrupt.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/string.o: lib/string.c lib/string.h
+$(BUILD_DIR)/string.o: lib/string.c lib/string.h kernel/debug.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 
 ################ 汇编代码编译 ################
+BOOT = $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin
+
 $(BUILD_DIR)/mbr.bin: boot/mbr.asm
-	@$(AS) $(ASLIB) -o $@ $<
+	@$(AS) $(ASLIB) -o $@ $< -l $(BUILD_DIR)/mbr.bin.asm
 
 $(BUILD_DIR)/loader.bin: boot/loader.asm
-	@$(AS) $(ASLIB) -o $@ $<
+	@$(AS) $(ASLIB) -o $@ $< -l $(BUILD_DIR)/loader.bin.asm
+
+OBJS += $(BUILD_DIR)/kernel.o $(BUILD_DIR)/print.o
 
 $(BUILD_DIR)/print.o: lib/kernel/print.asm
 	@$(AS) $(ASFLAGS) -o $@ $<
@@ -60,15 +64,15 @@ $(BUILD_DIR)/kernel.o: kernel/kernel.asm
 	@$(AS) $(ASFLAGS) -o $@ $^
 
 ################ 链接 ################
+KERNEL = $(BUILD_DIR)/kernel.bin
 $(BUILD_DIR)/kernel.bin: $(OBJS)
 	@$(LD) $(LDFLAGS) -o $@ $^
 
-build: $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin $(BUILD_DIR)/kernel.bin
-
-disk: build
-	@dd if=build/mbr.bin of=build/hd60M.img bs=512 count=1 conv=notrunc
-	@dd if=build/loader.bin of=build/hd60M.img bs=512 count=4 seek=2 conv=notrunc
-	@dd if=build/kernel.bin of=build/hd60M.img bs=512 count=200 seek=9 conv=notrunc
+$(BUILD_DIR)/hd60M.img: build $(BOOT) $(KERNEL)
+	@if [ ! -f $(BUILD_DIR)/hd60M.img ]; then bximage -hd=60M -func="create" -q $(BUILD_DIR)/hd60M.img; fi
+	@dd if=$(BUILD_DIR)/mbr.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=1 conv=notrunc
+	@dd if=$(BUILD_DIR)/loader.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=4 seek=2 conv=notrunc
+	@dd if=$(BUILD_DIR)/kernel.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=200 seek=9 conv=notrunc
 
 run: all
 	@bochs -f bochsrc.disk
@@ -95,8 +99,10 @@ unenv:
 		sed -i 's/^display_library: sdl2/#display_library: sdl2/' bochsrc.disk; \
 	fi
 
-debug-asm: $(BUILD_DIR)/kernel.bin
+$(BUILD_DIR)/kernel.bin.asm: $(BUILD_DIR)/kernel.bin
 	@objdump -d $(BUILD_DIR)/kernel.bin > $(BUILD_DIR)/kernel.bin.asm
+
+debug-asm: $(BUILD_DIR)/kernel.bin.asm
 
 clean: unenv
 	@rm -rf build

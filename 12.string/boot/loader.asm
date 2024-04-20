@@ -3,7 +3,6 @@
 section loader vstart=LOADER_BASE_ADDR
 
 ; jmp loader_start  ; 跳转逻辑放到mbr.asm里了，这里不需要了。为了对齐内存
-
 ; 构建 GDT(全局描述符表) 及其内部的描述符. 基址是LOADER_BASE_ADDR，每个描述符8字节
 GDT_BASE:        dd  0x00000000       ; dd 为 4 字节, 是double word的缩写
            dd 0x00000000
