@@ -1,6 +1,6 @@
-.PHONY: kernel boot
+.PHONY: all run
 
-all: boot disk env
+all: build build/hd60M.img
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
@@ -13,23 +13,27 @@ else
 	LD = ld
 endif
 
-boot: boot/mbr.asm boot/loader.asm
+build:
 	@mkdir -p build
+
+build/mbr.bin: boot/mbr.asm
 	@nasm -o build/mbr.bin boot/mbr.asm -I ./include/
+
+build/loader.bin: boot/loader.asm
 	@nasm -o build/loader.bin boot/loader.asm -I ./include/
 
-kernel: kernel/main.c
+build/kernel.bin: kernel/main.c
 	@mkdir -p build
 	@$(GCC) -m32 -c -o build/main.o kernel/main.c
 	@$(LD) -m elf_i386 -Ttext 0c0001500 -e main -o build/kernel.bin build/main.o
 
-disk: boot kernel
+build/hd60M.img: build/mbr.bin build/loader.bin build/kernel.bin
 	@if [ ! -f build/hd60M.img ]; then bximage -hd=60M -func="create" -q build/hd60M.img; fi
 	@dd if=build/mbr.bin of=build/hd60M.img bs=512 count=1 conv=notrunc
 	@dd if=build/loader.bin of=build/hd60M.img bs=512 count=4 seek=2 conv=notrunc
 	@dd if=build/kernel.bin of=build/hd60M.img bs=512 count=200 seek=9 conv=notrunc
 
-run: all
+run: all env
 	@bochs -f bochsrc.disk
 
 # 创建virtualbox虚拟机构建的硬盘

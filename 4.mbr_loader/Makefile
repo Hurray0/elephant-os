@@ -1,6 +1,6 @@
-.PHONY: all run clean hd60M.img
+.PHONY: all run clean
 
-all: mbr.bin loader.bin hd60M.img env
+all: hd60M.img
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
@@ -20,7 +20,7 @@ hd60M.img: mbr.bin loader.bin
 	@dd if=mbr.bin of=hd60M.img bs=512 count=1 conv=notrunc
 	@dd if=loader.bin of=hd60M.img bs=512 count=4 seek=2 conv=notrunc
 
-run: all
+run: all env
 	@bochs -f bochsrc.disk
 
 # 创建virtualbox虚拟机构建的硬盘

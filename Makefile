@@ -1,13 +1,22 @@
-.PHONY: all
+.PHONY: all clean
 
 # 使用shell命令找到所有以数字和点开头的目录
-DIRS := $(shell find . -maxdepth 1 -type d -name '[0-9]*.*' | sort -V)
+DIRS := $(shell find . -maxdepth 1 -type d -name '[0-9]*.*' -exec basename {} \; | sort -V)
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+	OS = "mac"
+	SED = sed -i ''
+else
+	OS = "linux"
+	SED = sed -i
+endif
 
 # 默认目标，依赖于所有目录的make目标
 all: $(DIRS)
 	@$(foreach dir,$(DIRS),$(MAKE) -C $(dir);)
 
-clean: $(DIRS)
+clean:
 	@$(foreach dir,$(DIRS),$(MAKE) -C $(dir) clean;)
 
 # run目标，让用户选择一个目录来执行make run
@@ -27,6 +36,22 @@ vb: virtualbox
 
 virtualbox: $(DIRS)
 	$(foreach dir,$(DIRS),$(MAKE) -C $(dir) virtualbox;)
+
+# 首先遍历读取所有的文件夹，读取其README.md文件的全部内容，将其内容写到一个临时文件中（改变标题级别为3级，并输出文件夹名称）
+# 修改tmp.md中的路径，由'../doc/'改为'./doc/'
+# 删除README.md中的项目列表部分，将临时文件的内容追加到README.md中
+README.md: $(DIRS) Makefile
+	@rm -f tmp.md
+	@$(foreach dir,$(DIRS),echo "### $(dir) - `head -n 1 $(dir)/README.md | cut -c 3-`" >> tmp.md\
+		&& echo "目录链接：[$(dir)](./$(dir))\n" >> tmp.md \
+		&& echo "`tail -n +2 $(dir)/README.md`" >> tmp.md  && echo "\n\n" >> tmp.md;)
+	@$(SED) 's/\.\.\/doc\//\.\/doc\//g' tmp.md
+	@$(SED) '/## 项目列表/,$$d' README.md
+	@echo "## 项目列表" >> README.md
+	@cat tmp.md >> README.md
+	@rm -f tmp.md
+
+docs: README.md
 
 env:
 	$(foreach dir,$(DIRS),$(MAKE) -C $(dir) env;)

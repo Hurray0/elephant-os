@@ -1,4 +1,4 @@
-.PHONY: kernel boot # 伪目标，不是文件名
+.PHONY: all clean # 伪目标，不是文件名
 
 BUILD_DIR = build
 ENTRY_POINT = 0xc0001500
@@ -9,7 +9,7 @@ ASFLAGS = -f elf
 LDFLAGS = -m elf_i386 -Ttext $(ENTRY_POINT) -e main
 CFLAGS = -m32 -c $(LIB)
 OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/print.o $(BUILD_DIR)/interrupt.o $(BUILD_DIR)/init.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/timer.o
-all: mk_dir build disk env
+all: $(BUILD_DIR) $(BUILD_DIR)/hd60M.img
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
@@ -22,9 +22,8 @@ else
 	LD = ld
 endif
 
-mk_dir:
+$(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
-	@if [ ! -f $(BUILD_DIR)/hd60M.img ]; then bximage -hd=60M -func="create" -q $(BUILD_DIR)/hd60M.img; fi
 
 ################ c代码编译 ################
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h lib/stdint.h
@@ -57,14 +56,13 @@ $(BUILD_DIR)/kernel.o: kernel/kernel.asm
 $(BUILD_DIR)/kernel.bin: $(OBJS)
 	@$(LD) $(LDFLAGS) -o $@ $^
 
-build: $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin $(BUILD_DIR)/kernel.bin
+$(BUILD_DIR)/hd60M.img: $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin $(BUILD_DIR)/kernel.bin
+	@if [ ! -f $(BUILD_DIR)/hd60M.img ]; then bximage -hd=60M -func="create" -q $(BUILD_DIR)/hd60M.img; fi
+	@dd if=$(BUILD_DIR)/mbr.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=1 conv=notrunc
+	@dd if=$(BUILD_DIR)/loader.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=4 seek=2 conv=notrunc
+	@dd if=$(BUILD_DIR)/kernel.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=200 seek=9 conv=notrunc
 
-disk: build
-	@dd if=build/mbr.bin of=build/hd60M.img bs=512 count=1 conv=notrunc
-	@dd if=build/loader.bin of=build/hd60M.img bs=512 count=4 seek=2 conv=notrunc
-	@dd if=build/kernel.bin of=build/hd60M.img bs=512 count=200 seek=9 conv=notrunc
-
-run: all
+run: all env
 	@bochs -f bochsrc.disk
 
 # 创建virtualbox虚拟机构建的硬盘

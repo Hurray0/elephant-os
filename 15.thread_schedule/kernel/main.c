@@ -4,6 +4,7 @@
 #include "string.h"
 #include "memory.h"
 #include "thread.h"
+#include "interrupt.h"
 
 static void k_thread_a(void*);
 static void k_thread_b(void*);
