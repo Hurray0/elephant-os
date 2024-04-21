@@ -1,15 +1,16 @@
 [bits 32]
 %define ERROR_CODE nop    ; 若在相关的异常中 CPU 已经自动压入了错误码，为保持校中格式统一，这里不做操作
 
-%define ZERO push 0
+%define ZERO       push 0
 
-extern put_str            ; 声明外部函数
-extern put_int            ; 声明外部函数
+; extern put_str            ; 声明外部函数
+; extern put_int            ; 声明外部函数
+extern  idt_table        ; idt_table是C中注册的中断处理程序数组
 
 section .data
-intr_str db "interrupt occur!", 0xa, 0           ; 这里0xa是换行符, 0是字符串结束符\0
+; intr_str db "interrupt occur!", 0xa, 0           ; 这里0xa是换行符, 0是字符串结束符\0
 ; intr_cnt db 0                                    ; 中断计数器
-global intr_entry_table
+global  intr_entry_table
 
 intr_entry_table:
 
@@ -17,68 +18,70 @@ intr_entry_table:
 section .text
 intr%1entry:    ; 定义中断入口程序
     %2
-    ; ;; 自定义的显示中断计数器的功能
-    ; ; 中断计数器加1
-    ; mov al, [intr_cnt]
-    ; inc al
-    ; mov [intr_cnt], al
-    ; ; 显示中断计数器
-    ; push eax
-    ; call put_int
-    ; pop eax
-    ; ;; 自定义结束
-    push intr_str
-    call put_str
-    ; 打印中断号
-    push byte %1
-    call put_int
-    add esp, 4
+    push   ds
+    push   es
+    push   fs
+    push   gs
+    pushad    ; PUSHAD指令压入32位寄存器,其入栈顺序是: EAX,ECX,EDX,EBX,ESP,EBP,ESI,EDI
 
-    add esp, 4    ; 跳过参数
-    ; 如果是从片上进入的中断，除了往从片上发送 EOI 外，还要往主片上发送 EOI
-    mov al, 0x20  ; 中断结束命令EOI
-    out 0xa0, al  ; 发送给从片
-    out 0x20, al  ; 发送给主片
+    ; 如果是从片上进入的中断,除了往从片上发送EOI外,还要往主片上发送EOI
+    mov al,   0x20 ; 中断结束命令EOI
+    out 0xa0, al   ; 向从片发送
+    out 0x20, al   ; 向主片发送
 
-    add esp, 4    ; 跳过错误码
-    iret          ; 中断返回, 32位下等同于iretd，会自动弹出EIP、CS、EFLAGS、ESP、SS
+    push %1                 ; 不管idt_table中的目标程序是否需要参数,都一律压入中断向量号,调试时很方便
+    call [idt_table + %1*4] ; 调用idt_table中的C版本中断处理函数
+    jmp  intr_exit
 
 section .data
-    dd intr%1entry       ; 存储各个中断入口程序的地址，形成intr_entry_table数组，即中断向量表
+    dd intr%1entry ; 存储各个中断入口程序的地址，形成intr_entry_table数组，即中断向量表
 %endmacro
+
+section .text
+global  intr_exit
+intr_exit:
+; 以下是恢复上下文环境
+    add esp, 4 ; 跳过中断号
+    popad
+    pop gs
+    pop fs
+    pop es
+    pop ds
+    add esp, 4 ; 跳过error_code
+    iretd
 
 ; 从0x00到0x1f的中断向量表，共32个中断。其中0~19是CPU内部的异常，20~31是外部中断（Intel保留）
 ; 0x20为我们的时钟中断
-VECTOR 0x00,ZERO
-VECTOR 0x01,ZERO
-VECTOR 0x02,ZERO
-VECTOR 0x03,ZERO
-VECTOR 0x04,ZERO
-VECTOR 0x05,ZERO
-VECTOR 0x06,ZERO
-VECTOR 0x07,ZERO
-VECTOR 0x08,ERROR_CODE
-VECTOR 0x09,ZERO
-VECTOR 0x0a,ERROR_CODE
-VECTOR 0x0b,ERROR_CODE
-VECTOR 0x0c,ZERO
-VECTOR 0x0d,ERROR_CODE
-VECTOR 0x0e,ERROR_CODE
-VECTOR 0x0f,ZERO
-VECTOR 0x10,ZERO
-VECTOR 0x11,ERROR_CODE
-VECTOR 0x12,ZERO
-VECTOR 0x13,ZERO
-VECTOR 0x14,ZERO
-VECTOR 0x15,ZERO
-VECTOR 0x16,ZERO
-VECTOR 0x17,ZERO
-VECTOR 0x18,ERROR_CODE
-VECTOR 0x19,ZERO
-VECTOR 0x1a,ERROR_CODE
-VECTOR 0x1b,ERROR_CODE
-VECTOR 0x1c,ZERO
-VECTOR 0x1d,ERROR_CODE
-VECTOR 0x1e,ERROR_CODE
-VECTOR 0x1f,ZERO
-VECTOR 0x20,ZERO
+VECTOR 0x00, ZERO
+VECTOR 0x01, ZERO
+VECTOR 0x02, ZERO
+VECTOR 0x03, ZERO
+VECTOR 0x04, ZERO
+VECTOR 0x05, ZERO
+VECTOR 0x06, ZERO
+VECTOR 0x07, ZERO
+VECTOR 0x08, ERROR_CODE
+VECTOR 0x09, ZERO
+VECTOR 0x0a, ERROR_CODE
+VECTOR 0x0b, ERROR_CODE
+VECTOR 0x0c, ZERO
+VECTOR 0x0d, ERROR_CODE
+VECTOR 0x0e, ERROR_CODE
+VECTOR 0x0f, ZERO
+VECTOR 0x10, ZERO
+VECTOR 0x11, ERROR_CODE
+VECTOR 0x12, ZERO
+VECTOR 0x13, ZERO
+VECTOR 0x14, ZERO
+VECTOR 0x15, ZERO
+VECTOR 0x16, ZERO
+VECTOR 0x17, ZERO
+VECTOR 0x18, ERROR_CODE
+VECTOR 0x19, ZERO
+VECTOR 0x1a, ERROR_CODE
+VECTOR 0x1b, ERROR_CODE
+VECTOR 0x1c, ZERO
+VECTOR 0x1d, ERROR_CODE
+VECTOR 0x1e, ERROR_CODE
+VECTOR 0x1f, ZERO
+VECTOR 0x20, ZERO
