@@ -77,9 +77,30 @@ static void general_intr_handler(uint8_t vec_nr) {
       vec_nr == 0x2f) { // 0x2f是从片8259A上的最后一个irq引脚，保留
     return; // IRQ7和IRQ15会产生伪中断(spurious interrupt),无须处理。
   }
-  put_str("int vector: 0x");
-  put_int(vec_nr);
-  put_char('\n');
+  /* 将光标置为0,从屏幕左上角清出一片打印异常信息的区域,方便阅读 */
+  set_cursor(0);
+  int cursor_pos = 0;
+  while (cursor_pos < 320) {  // 320 = 80*4
+    put_char(' ');
+    cursor_pos++;
+  }
+
+  set_cursor(0); // 重置光标为屏幕左上角
+  put_str("!!!!!!!      excetion message begin  !!!!!!!!\n");
+  set_cursor(88); // 从第2行第8个字符开始打印
+  put_str(intr_name[vec_nr]);
+  if (vec_nr == 14) { // 若为Pagefault,将缺失的地址打印出来并悬停
+    int page_fault_vaddr = 0;
+    asm("movl %%cr2, %0"
+        : "=r"(page_fault_vaddr)); // cr2是存放造成page_fault的地址
+    put_str("\npage fault addr is ");
+    put_int(page_fault_vaddr);
+  }
+  put_str("\n!!!!!!!      excetion message end    !!!!!!!!\n");
+  // 能进入中断处理程序就表示已经处在关中断情况下,
+  // 不会出现调度进程的情况。故下面的死循环不会再被中断。
+  while (1)
+    ;
 }
 
 /* 完成一般中断处理函数注册及异常名称注册 */
@@ -92,7 +113,7 @@ static void exception_init(void) { // 完成一般中断处理函数注册及异
     idt_table[i] =
         general_intr_handler; // 默认为general_intr_handler。
                               // 以后会由register_handler来注册具体处理函数。
-    intr_name[i] = "unknown"; // 先统一赋值为unknown
+    intr_name[i] = "unknown?"; // 先统一赋值为unknown
   }
   intr_name[0] = "#DE Divide Error";
   intr_name[1] = "#DB Debug Exception";
@@ -168,4 +189,11 @@ enum intr_status intr_get_status() {
   uint32_t eflags = 0;
   GET_EFLAGS(eflags);
   return (EFLAGS_IF & eflags) ? INTR_ON : INTR_OFF;
+}
+
+/* 在中断处理程序数组第vector_no个元素中注册安装中断处理程序function */
+void register_handler(uint8_t vector_no, intr_handler function) {
+/* idt_table数组中的函数是在进入中断后根据中断向量号调用的,
+ * 见kernel/kernel.S的call [idt_table + %1*4] */
+  idt_table[vector_no] = function;
 }

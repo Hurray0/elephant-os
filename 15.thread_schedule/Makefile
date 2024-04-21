@@ -34,7 +34,8 @@ OBJS = $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/string.o \
 		$(BUILD_DIR)/bitmap.o \
 		$(BUILD_DIR)/memory.o \
-		$(BUILD_DIR)/thread.o
+		$(BUILD_DIR)/thread.o \
+		$(BUILD_DIR)/list.o
 
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h kernel/memory.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
@@ -42,10 +43,10 @@ $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init
 $(BUILD_DIR)/interrupt.o: kernel/interrupt.c kernel/global.h lib/kernel/io.h lib/kernel/print.h lib/stdint.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/init.o: kernel/init.c lib/kernel/print.h kernel/interrupt.h device/timer.h
+$(BUILD_DIR)/init.o: kernel/init.c lib/kernel/print.h kernel/interrupt.h device/timer.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/timer.o: device/timer.c device/timer.h lib/kernel/io.h lib/kernel/print.h
+$(BUILD_DIR)/timer.o: device/timer.c device/timer.h lib/kernel/io.h lib/kernel/print.h kernel/interrupt.h kernel/debug.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/debug.o: kernel/debug.c kernel/debug.h lib/kernel/print.h kernel/interrupt.h
@@ -60,7 +61,10 @@ $(BUILD_DIR)/bitmap.o: lib/kernel/bitmap.c lib/kernel/bitmap.h lib/stdint.h kern
 $(BUILD_DIR)/memory.o: kernel/memory.c kernel/memory.h lib/stdint.h lib/kernel/bitmap.h kernel/debug.h lib/kernel/print.h lib/string.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/thread.o: thread/thread.c thread/thread.h lib/stdint.h lib/string.h kernel/global.h kernel/memory.h
+$(BUILD_DIR)/thread.o: thread/thread.c thread/thread.h lib/stdint.h lib/string.h kernel/global.h kernel/memory.h kernel/debug.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/list.o: lib/kernel/list.c lib/kernel/list.h lib/stdint.h kernel/global.h kernel/interrupt.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 ################ 汇编代码编译 ################
@@ -72,12 +76,15 @@ $(BUILD_DIR)/mbr.bin: boot/mbr.asm
 $(BUILD_DIR)/loader.bin: boot/loader.asm
 	@$(AS) $(ASLIB) -o $@ $< -l $(BUILD_DIR)/loader.bin.asm
 
-OBJS += $(BUILD_DIR)/kernel.o $(BUILD_DIR)/print.o
+OBJS += $(BUILD_DIR)/kernel.o $(BUILD_DIR)/print.o $(BUILD_DIR)/switch.o
 
 $(BUILD_DIR)/print.o: lib/kernel/print.asm
 	@$(AS) $(ASFLAGS) -o $@ $<
 
 $(BUILD_DIR)/kernel.o: kernel/kernel.asm
+	@$(AS) $(ASFLAGS) -o $@ $^
+
+$(BUILD_DIR)/switch.o: thread/switch.asm
 	@$(AS) $(ASFLAGS) -o $@ $^
 
 ################ 链接 ################
