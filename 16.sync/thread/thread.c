@@ -134,3 +134,28 @@ void thread_init(void) {
     put_str("thread_init done\n");
 }
 
+/* 当前线程将自己阻塞,标志其状态为stat. */
+void thread_block(enum task_status stat) {
+    /* stat取值为TASK_BLOCKED,TASK_WAITING,TASK_HANDING,不会是TASK_RUNNING */
+    ASSERT(((stat == TASK_BLOCKED) || (stat == TASK_WAITING) || (stat == TASK_HANGING)));
+    enum intr_status old_status = intr_disable();
+    struct task_struct* cur_thread = running_thread();
+    cur_thread->status = stat; // 置其状态为stat
+    schedule(); // 将当前线程换下处理器
+    intr_set_status(old_status); // 恢复中断
+}
+
+/* 将线程pthread解除阻塞 */
+void thread_unblock(struct task_struct* pthread) {
+    enum intr_status old_status = intr_disable();
+    ASSERT(((pthread->status == TASK_BLOCKED) || (pthread->status == TASK_WAITING) || (pthread->status == TASK_HANGING)));
+    if (pthread->status != TASK_READY) {
+        ASSERT(!elem_find(&thread_ready_list, &pthread->general_tag));
+        if (elem_find(&thread_ready_list, &pthread->general_tag)) {
+            PANIC("thread_unblock: blocked thread in ready_list\n");
+        }
+        pthread->status = TASK_READY;
+        list_push(&thread_ready_list, &pthread->general_tag);
+    }
+    intr_set_status(old_status);
+}

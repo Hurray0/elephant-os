@@ -4,6 +4,7 @@
 #include "../device/timer.h"
 #include "memory.h"
 #include "thread.h"
+#include "console.h"
 
 /* 负责初始化所有模块 */
 void init_all() {
@@ -12,4 +13,5 @@ void init_all() {
     mem_init(); // 初始化内存管理系统
     thread_init(); // 初始化线程相关结构
     timer_init(); // 初始化定时器
+    console_init(); // 控制台初始化
 }
