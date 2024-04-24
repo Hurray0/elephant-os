@@ -6,3 +6,4 @@
 .*.un~
 *.vdi
 build/
+.vscode/

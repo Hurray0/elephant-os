@@ -43,8 +43,8 @@ virtualbox: $(DIRS)
 README.md: $(DIRS) Makefile
 	@rm -f tmp.md
 	@$(foreach dir,$(DIRS),echo "### $(dir) - `head -n 1 $(dir)/README.md | cut -c 3-`" >> tmp.md\
-		&& echo "目录链接：[$(dir)](./$(dir))\n" >> tmp.md \
-		&& echo "`tail -n +2 $(dir)/README.md`" >> tmp.md  && echo "\n\n" >> tmp.md;)
+		&& echo -e "目录链接：[$(dir)](./$(dir))\n" >> tmp.md \
+		&& echo -e "`tail -n +2 $(dir)/README.md`" >> tmp.md  && echo -e "\n\n" >> tmp.md;)
 	@$(SED) 's/\.\.\/doc\//\.\/doc\//g' tmp.md
 	@$(SED) '/## 项目列表/,$$d' README.md
 	@echo "## 项目列表" >> README.md

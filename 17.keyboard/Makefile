@@ -37,7 +37,9 @@ OBJS = $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/thread.o \
 		$(BUILD_DIR)/list.o \
 		$(BUILD_DIR)/console.o \
-		$(BUILD_DIR)/sync.o
+		$(BUILD_DIR)/sync.o \
+		$(BUILD_DIR)/keyboard.o \
+		$(BUILD_DIR)/ioqueue.o
 
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h kernel/memory.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
@@ -45,7 +47,7 @@ $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init
 $(BUILD_DIR)/interrupt.o: kernel/interrupt.c kernel/global.h lib/kernel/io.h lib/kernel/print.h lib/stdint.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/init.o: kernel/init.c lib/kernel/print.h kernel/interrupt.h device/timer.h thread/thread.h
+$(BUILD_DIR)/init.o: kernel/init.c lib/kernel/print.h kernel/interrupt.h device/timer.h thread/thread.h device/console.h device/keyboard.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/debug.o: kernel/debug.c kernel/debug.h lib/kernel/print.h kernel/interrupt.h
@@ -67,6 +69,12 @@ $(BUILD_DIR)/timer.o: device/timer.c device/timer.h lib/kernel/io.h lib/kernel/p
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/console.o: device/console.c device/console.h lib/kernel/print.h lib/stdint.h thread/sync.h thread/thread.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/keyboard.o: device/keyboard.c device/keyboard.h lib/kernel/print.h lib/stdint.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/ioqueue.o: device/ioqueue.c device/ioqueue.h kernel/interrupt.h kernel/global.h kernel/debug.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/thread.o: thread/thread.c thread/thread.h lib/stdint.h lib/string.h kernel/global.h kernel/memory.h kernel/debug.h
