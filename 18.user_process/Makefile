@@ -3,7 +3,7 @@
 BUILD_DIR = build
 ENTRY_POINT = 0xc0001500
 AS = nasm
-LIB = -I ./lib/kernel/ -I ./lib/ -I ./kernel/ -I ./thread/ -I ./device/
+LIB = -I ./lib/kernel/ -I ./lib/ -I ./kernel/ -I ./thread/ -I ./device/ -I ./userprog/
 ASLIB = -I ./boot/include/
 ASFLAGS = -f elf
 LDFLAGS = -m elf_i386 -Ttext $(ENTRY_POINT) -e main
@@ -39,7 +39,9 @@ OBJS = $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/console.o \
 		$(BUILD_DIR)/sync.o \
 		$(BUILD_DIR)/keyboard.o \
-		$(BUILD_DIR)/ioqueue.o
+		$(BUILD_DIR)/ioqueue.o \
+		$(BUILD_DIR)/tss.o \
+		$(BUILD_DIR)/process.o
 
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h kernel/memory.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
@@ -47,7 +49,7 @@ $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init
 $(BUILD_DIR)/interrupt.o: kernel/interrupt.c kernel/global.h lib/kernel/io.h lib/kernel/print.h lib/stdint.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/init.o: kernel/init.c lib/kernel/print.h kernel/interrupt.h device/timer.h thread/thread.h device/console.h device/keyboard.h
+$(BUILD_DIR)/init.o: kernel/init.c lib/kernel/print.h kernel/interrupt.h device/timer.h thread/thread.h device/console.h device/keyboard.h userprog/tss.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/debug.o: kernel/debug.c kernel/debug.h lib/kernel/print.h kernel/interrupt.h
@@ -81,6 +83,12 @@ $(BUILD_DIR)/thread.o: thread/thread.c thread/thread.h lib/stdint.h lib/string.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/sync.o: thread/sync.c thread/sync.h kernel/interrupt.h thread/thread.h kernel/debug.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/tss.o: userprog/tss.c userprog/tss.h lib/stdint.h lib/kernel/print.h kernel/global.h lib/string.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/process.o: userprog/process.c userprog/process.h device/console.h kernel/debug.h kernel/global.h kernel/interrupt.h lib/kernel/list.h kernel/memory.h lib/string.h thread/thread.h userprog/tss.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 ################ 汇编代码编译 ################

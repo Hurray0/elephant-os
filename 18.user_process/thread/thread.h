@@ -2,6 +2,8 @@
 #define __THEAD_THREAD_H
 #include "stdint.h"
 #include "list.h"
+#include "memory.h"
+#include "bitmap.h"
 
 // 自定义通用函数类型, 它将在很多线程函数中作为形参类型
 typedef void thread_func(void*);
@@ -79,10 +81,13 @@ struct task_struct {
     struct list_elem general_tag;  // 用于线程在一般队列中的结点
     struct list_elem all_list_tag;  // 用于线程队列thread_all_list中的结点
     uint32_t* pgdir;        // 进程自己页表的虚拟地址
-    // struct virtual_addr userprog_vaddr;  // 用户进程的虚拟地址
+    struct virtual_addr userprog_vaddr;  // 用户进程的虚拟地址
     // struct mem_block_desc u_block_desc[DESC_CNT];  // 用户进程内存块描述符
     uint32_t stack_magic;   // 用这串数字做栈的边界标记, 用于检测栈的溢出
 };
+
+extern struct list thread_ready_list;
+extern struct list thread_all_list;
 
 void thread_create(struct task_struct* pthread, thread_func function, void* func_arg);
 void init_thread(struct task_struct* pthread, char* name, int prio);
