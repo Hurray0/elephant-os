@@ -1,8 +1,5 @@
-.PHONY: kernel boot # 伪目标，不是文件名
+include ../include.mk
 
-BUILD_DIR = build
-ENTRY_POINT = 0xc0001500
-AS = nasm
 LIB = -I ./lib/kernel/ -I ./lib/ -I ./kernel/
 ASLIB = -I ./boot/include/
 ASFLAGS = -f elf
@@ -10,20 +7,6 @@ LDFLAGS = -m elf_i386 -Ttext $(ENTRY_POINT) -e main
 CFLAGS = -m32 -c $(LIB)
 OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/print.o $(BUILD_DIR)/interrupt.o $(BUILD_DIR)/init.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/timer.o $(BUILD_DIR)/debug.o
 all: $(BUILD_DIR)/hd60M.img
-
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
-	OS = "mac"
-	GCC = x86_64-elf-gcc
-	LD = x86_64-elf-ld
-else
-	OS = "linux"
-	GCC = gcc
-	LD = ld
-endif
-
-$(BUILD_DIR):
-	@mkdir -p $(BUILD_DIR)
 
 ################ c代码编译 ################
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h lib/stdint.h
@@ -64,31 +47,3 @@ $(BUILD_DIR)/hd60M.img: $(BUILD_DIR) $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bi
 	@dd if=$(BUILD_DIR)/mbr.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=1 conv=notrunc
 	@dd if=$(BUILD_DIR)/loader.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=4 seek=2 conv=notrunc
 	@dd if=$(BUILD_DIR)/kernel.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=200 seek=9 conv=notrunc
-
-run: all env
-	@bochs -f bochsrc.disk
-
-# 创建virtualbox虚拟机构建的硬盘
-virtualbox: all
-	@VBoxManage convertfromraw --format VDI build/hd60M.img build/hd60M.vdi
-
-vb: virtualbox
-
-# 修改bochsrc.disk文件，适配不同的操作系统
-env:
-	@if [ $(OS) = "mac" ]; then \
-		sed -i '' 's/^#display_library: sdl2/display_library: sdl2/' bochsrc.disk; \
-	elif [ $(OS) = "linux" ]; then \
-		sed -i 's/^display_library: sdl2/#display_library: sdl2/' bochsrc.disk; \
-	fi
-
-# 恢复到原始状态
-unenv:
-	@if [ $(OS) = "mac" ]; then \
-		sed -i '' 's/^display_library: sdl2/#display_library: sdl2/' bochsrc.disk; \
-	else \
-		sed -i 's/^display_library: sdl2/#display_library: sdl2/' bochsrc.disk; \
-	fi
-
-clean: unenv
-	@rm -rf build

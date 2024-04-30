@@ -1,8 +1,5 @@
-.PHONY: all # 伪目标，不是文件名
+include ../include.mk
 
-BUILD_DIR = build
-ENTRY_POINT = 0xc0001500
-AS = nasm
 LIB = -I ./lib/kernel/ -I ./lib/ -I ./kernel/ -I ./thread/ -I ./device/
 ASLIB = -I ./boot/include/
 ASFLAGS = -f elf
@@ -10,20 +7,6 @@ LDFLAGS = -m elf_i386 -Ttext $(ENTRY_POINT) -e main
 CFLAGS = -m32 -c $(LIB) -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -mno-sse # 这里加上-mno-sse是为了解决macOS下编译时出现的错误
 
 all: $(BUILD_DIR)/hd60M.img debug-asm
-
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
-	OS = "mac"
-	GCC = x86_64-elf-gcc
-	LD = x86_64-elf-ld
-else
-	OS = "linux"
-	GCC = gcc
-	LD = ld
-endif
-
-$(BUILD_DIR):
-	@mkdir -p $(BUILD_DIR)
 
 ################ c代码编译 ################
 OBJS = $(BUILD_DIR)/main.o \
@@ -100,41 +83,9 @@ KERNEL = $(BUILD_DIR)/kernel.bin
 $(BUILD_DIR)/kernel.bin: $(OBJS)
 	@$(LD) $(LDFLAGS) -o $@ $^
 
+################ 虚拟机构建 ################
 $(BUILD_DIR)/hd60M.img: $(BUILD_DIR) $(BOOT) $(KERNEL)
 	@if [ ! -f $(BUILD_DIR)/hd60M.img ]; then bximage -hd=60M -func="create" -q $(BUILD_DIR)/hd60M.img; fi
 	@dd if=$(BUILD_DIR)/mbr.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=1 conv=notrunc
 	@dd if=$(BUILD_DIR)/loader.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=4 seek=2 conv=notrunc
 	@dd if=$(BUILD_DIR)/kernel.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=200 seek=9 conv=notrunc
-
-run: all env
-	@bochs -f bochsrc.disk
-
-# 创建virtualbox虚拟机构建的硬盘
-virtualbox: all
-	@VBoxManage convertfromraw --format VDI build/hd60M.img build/hd60M.vdi
-
-vb: virtualbox
-
-# 修改bochsrc.disk文件，适配不同的操作系统
-env:
-	@if [ $(OS) = "mac" ]; then \
-		sed -i '' 's/^#display_library: sdl2/display_library: sdl2/' bochsrc.disk; \
-	elif [ $(OS) = "linux" ]; then \
-		sed -i 's/^display_library: sdl2/#display_library: sdl2/' bochsrc.disk; \
-	fi
-
-# 恢复到原始状态
-unenv:
-	@if [ $(OS) = "mac" ]; then \
-		sed -i '' 's/^display_library: sdl2/#display_library: sdl2/' bochsrc.disk; \
-	else \
-		sed -i 's/^display_library: sdl2/#display_library: sdl2/' bochsrc.disk; \
-	fi
-
-$(BUILD_DIR)/kernel.bin.asm: $(BUILD_DIR)/kernel.bin
-	@objdump -d $(BUILD_DIR)/kernel.bin > $(BUILD_DIR)/kernel.bin.asm
-
-debug-asm: $(BUILD_DIR)/kernel.bin.asm
-
-clean: unenv
-	@rm -rf build

@@ -127,6 +127,7 @@ loader_start:
     out 0x92, al
 
 ; step2. 加载 GDT
+    cli
     lgdt [gdt_ptr] ; 加载 GDT, 告诉 CPU GDT 的位置和大小。这个指令是写入 GDTR 寄存器
 
 ; step3. 将 cr0 的 PE 位置 1
@@ -155,9 +156,9 @@ p_mode_start:
     mov gs,  ax
 
     ; 加载kernel
-    mov eax, KERNEL_START_SECTOR
-    mov ebx, KERNEL_BIN_BASE_ADDR
-    mov ecx, 200
+    mov esi, KERNEL_START_SECTOR
+    mov edi, KERNEL_BIN_BASE_ADDR
+    mov cl, 200
 
     call rd_disk_m_32
 
@@ -313,54 +314,66 @@ setup_page:
 
 ; 保护模式的硬盘读取函数
 rd_disk_m_32:
-    mov esi, eax
-    mov di, cx
+    ; 1: 检查disk status
+    mov dx,0x1f7     ; 0x1f7=primary channel's status
+.not_ready1:
+    nop              ; 只是为了增加延迟
+    in al,dx
+    and al,0xc0      ; 0xc0=1100_0000b取bit 6~7
+    cmp al,0x40      ; 检查bit 6, 设备是否就绪
+    jnz .not_ready1  ;若未准备好，继续等
+    ; 2: 设置要读取的扇区数
+    mov dx,0x1f2         ; 0x1f2=primary channel's sector count, 8 位寄存器，最大值为 255 ，若指定为 0，则表示要操作 256 个扇区, 见`硬盘控制器主要端口寄存器`
+    mov al,cl
+    out dx,al            ;读取的扇区数
+    ; 3: 将LBA地址存入0x1f3 ~ 0x1f6
+    mov eax,esi
+    ;LBA地址7~0位写入端口0x1f3
+    mov dx,0x1f3      ;   0x1f3=primary channel's lba low
+    out dx,al
 
-    mov dx, 0x1f2
-    mov al, cl
-    out dx, al
+    ;LBA地址15~8位写入端口0x1f4
+    shr eax,8         ;   eax值右移8位
+    mov dx,0x1f4      ;   0x1f4=primary channel's lba mid
+    out dx,al
 
-    mov eax, esi
+    ;LBA地址23~16位写入端口0x1f5
+    shr eax,8
+    mov dx,0x1f5      ;   0x1f5=primary channel's lba high
+    out dx,al
 
-    mov dx, 0x1f3
-    out dx, al
+    ; 4: 设置device端口
+    shr eax,8
+    and al,0x0f      ; lba第24~27位, 其他bit置为0
+    or al,0xe0       ; 设置7～4位为1110,表示lba模式, 并使用主盘
+    mov dx,0x1f6     ; 0x1f6=primary channel's device
+    out dx,al
 
-    mov cl, 8
-    shr eax, cl
-    mov dx, 0x1f4
-    out dx, al
+    ; 5：向0x1f7端口写入读命令，0x20
+    mov dx,0x1f7     ; 0x1f7=primary channel's status
+    mov al,0x20      ; 0x20, 读取扇区
+    out dx,al
 
-    shr eax, cl
-    mov dx, 0x1f5
-    out dx, al
+    mov bl,cl
 
-    shr eax, cl
-    and al, 0x0f
-    or al, 0xe0
-    mov dx, 0x1f6
-    out dx, al
+.next_sector:
+    ; 6: 检查disk status
+.not_ready2:
+    mov dx,0x1f7
+    in al,dx         ; 因为status 寄存器依然是 0x1f7 端口, 所以不需要再为dx 重新赋值
+    and al,0x88      ;第4位为1表示硬盘控制器已准备好数据传输，第7位为1表示硬盘忙
+    cmp al,0x08
+    jnz .not_ready2       ;若未准备好，继续等
 
-    mov dx, 0x1f7
-    mov al, 0x20
-    out dx, al
-
-.not_ready:
-    nop
-    in al, dx
-    and al, 0x88
-    cmp al, 0x08
-    jnz .not_ready
-
-    mov ax, di
-    mov dx, 256
-    mul dx
-    mov cx, ax
-    mov dx, 0x1f0
-
+    ; 7：从0x1f0端口读数据. data 寄存器是 16 位，即每次 in 操作只读入 2 字节
+    mov cx, 256       ; cx是操作次数. 一个扇区有512字节，每次读入2个字，共需512/2次=256
+    mov dx, 0x1f0    ; 0x1f0=primary channel's data
 .go_on_read:
-    in ax, dx
-    mov [ebx], ax
-    add ebx, 2
-    loop .go_on_read
+    in ax,dx
+    mov [edi],ax      ; 使用edi, 因为KERNEL_BIN_BASE_ADDR超过了di
+    add edi,2
+    loop .go_on_read ; loop会cx-=1, 并判断cx是否为0进而继续循环还是往下走
+    dec bl
+    cmp bl,0
+    jnz .next_sector
     ret
-

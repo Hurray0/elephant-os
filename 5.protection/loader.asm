@@ -56,6 +56,7 @@ loader_start:
     out 0x92, al
 
 ; step2. 加载 GDT
+    cli                    ; 关中断
     lgdt [gdt_ptr]  ; 加载 GDT, 告诉 CPU GDT 的位置和大小。这个指令是写入 GDTR 寄存器
 
 ; step3. 将 cr0 的 PE 位置 1
