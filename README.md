@@ -309,7 +309,42 @@ __PS.对应书中第12章（进一步完善内核）中的12.2节（系统调用
 
 本章需要注意的是，对于`qemu`虚拟机，pid在初始化时，如果static int设为0，不会被初始化为0，而是一个随机数。因此需要手动初始化为0。
 其他虚拟机没有这个问题。
-<!-- ![11.用户进程.svg](./doc/image/11.用户进程.svg) -->
+![12.进一步完善内核.svg](./doc/image/12.进一步完善内核.svg)
+
+
+
+### 20.printf - 格式化打印
+目录链接：[20.printf](./20.printf)
+
+
+__PS.对应书中第12章（进一步完善内核）中的12.3节（让用户进程“说话”）__
+
+本章的重点在于可变长参数的理解和应用。可以通过指针递增来访问后续参数。原因是可变长参数在栈中是连续存放的。
+
+```c
+typedef char *va_list;
+#define va_start(ap, v) ap = (va_list) &v // 把ap指向第一个固定参数v
+#define va_arg(ap, t) *((t *)(ap += 4)) // ap指向下一个参数并返回其值
+#define va_end(ap) ap = NULL            // 清除ap
+
+void printf(const char *format, ...) {
+    va_list args;
+    va_start(args, format);  // args指向第一个固定参数format
+    // ... 之后使用va_arg(args, type)来获取下一个参数
+}
+```
+
+
+
+### 21.malloc - 堆内存管理
+目录链接：[21.malloc](./21.malloc)
+
+
+__PS.对应书中第12章（进一步完善内核）中的12.4节（完善堆内存管理）__
+
+本章的重点在于理解arena，即堆内存的管理单元。每个arena包含一个或多个page，每个page包含多个block。block是最小的分配单位。
+block大小有16B/32B/64B/128B/256B/512B/1024B，共7种，分别对应0-6的索引。
+大于1024B的内存分配直接调用`malloc_page`分配整个page。
 
 
 
