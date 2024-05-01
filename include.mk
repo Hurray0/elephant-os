@@ -6,15 +6,19 @@ VBOX_OS_NAME = "MyOS2"
 QEMU = qemu-system-i386
 AS = nasm
 ENTRY_POINT = 0xc0001500
+
 UNAME_S := $(shell uname -s)
+DEBUG_FLAG = -g
 ifeq ($(UNAME_S),Darwin)
 	OS = "mac"
-	GCC = x86_64-elf-gcc
+	GCC = x86_64-elf-gcc $(DEBUG_FLAG)
 	LD = x86_64-elf-ld
+	GDB = x86_64-elf-gdb
 else
 	OS = "linux"
-	GCC = gcc
+	GCC = gcc $(DEBUG_FLAG)
 	LD = ld
+	GDB = gdb
 endif
 
 BUILD_DIR = build
@@ -72,7 +76,8 @@ run_vb: $(BUILD_DIR)/hd60M.vdi
 	@VBoxManage startvm $$(VBoxManage list vms | grep '${VBOX_OS_NAME}' | awk '{print $$2}')
 
 run_qemu: $(BUILD_DIR)/hd60M.img
-	$(QEMU) -hda $^
+	@nohup $(QEMU) -s -S -hda $^ > /dev/null 2>&1 &
+	$(GDB) -q -ex "file $(BUILD_DIR)/kernel.bin" -ex "target remote :1234" -ex "b *0x7c00" -ex "c"
 
 $(BUILD_DIR)/kernel.bin.asm: $(BUILD_DIR)/kernel.bin
 	@objdump -d $(BUILD_DIR)/kernel.bin > $(BUILD_DIR)/kernel.bin.asm

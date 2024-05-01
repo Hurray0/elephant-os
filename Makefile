@@ -16,7 +16,7 @@ endif
 
 # 默认目标，依赖于所有目录的make目标
 all: $(DIRS)
-	@$(foreach dir,$(DIRS),$(MAKE) -C $(dir);)
+	@$(foreach dir,$(DIRS),$(MAKE) all -C $(dir);)
 
 clean:
 	@$(foreach dir,$(DIRS),$(MAKE) -C $(dir) clean;)
