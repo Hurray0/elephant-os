@@ -25,7 +25,8 @@ OBJS = $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/tss.o \
 		$(BUILD_DIR)/process.o \
 		$(BUILD_DIR)/syscall.o \
-		$(BUILD_DIR)/syscall-init.o
+		$(BUILD_DIR)/syscall-init.o \
+		$(BUILD_DIR)/stdio.o
 
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h kernel/memory.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
@@ -78,7 +79,10 @@ $(BUILD_DIR)/process.o: userprog/process.c userprog/process.h device/console.h k
 $(BUILD_DIR)/syscall.o: lib/user/syscall.c lib/user/syscall.h lib/stdint.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/syscall-init.o: userprog/syscall-init.c userprog/syscall-init.h lib/stdint.h lib/kernel/print.h lib/user/syscall.h
+$(BUILD_DIR)/syscall-init.o: userprog/syscall-init.c userprog/syscall-init.h lib/stdint.h lib/kernel/print.h lib/user/syscall.h device/console.h lib/string.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/stdio.o: lib/stdio.c lib/stdio.h lib/user/syscall.h lib/string.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 ################ 汇编代码编译 ################
