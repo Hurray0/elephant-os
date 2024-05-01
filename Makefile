@@ -22,13 +22,20 @@ clean:
 	@$(foreach dir,$(DIRS),$(MAKE) -C $(dir) clean;)
 
 # run目标，让用户选择一个目录来执行make run
+# 如果用户输入的目录不存在，则输出错误信息
+# 如果用户输入的不是数字，则运行最后一个目录
 run:
 	@printf "Available directories:\n"; \
 	$(foreach dir,$(DIRS),printf "%s\t%s\n" $(dir) "`head -n 1 $(dir)/README.md`";)
 	@printf "\n"
 	@read -p "Enter a directory number to run: " number; \
-	dir="./$$number.*"; \
+	if [ -z "$$number" ]; then \
+		dir=$(shell echo $(DIRS) | awk '{print $$NF}'); \
+	else \
+		dir="./$$number.*"; \
+	fi; \
 	if [ -d $$dir ]; then \
+		echo "Running $$dir"; \
 		$(MAKE) -C $$dir run; \
 	else \
 		echo "Directory $$dir does not exist."; \

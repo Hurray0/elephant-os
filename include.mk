@@ -49,14 +49,14 @@ run:
 	@echo "2. qemu"
 	@echo "3. virtualbox"
 	@read -p "Enter a number to run: " number; \
-	if [ $$number -eq 1 ]; then \
+	if [ -z "$$number" ]; then \
+		$(MAKE) run_bochs; \
+	elif [ $$number -eq 1 ]; then \
 		$(MAKE) run_bochs; \
 	elif [ $$number -eq 2 ]; then \
 		$(MAKE) run_qemu; \
 	elif [ $$number -eq 3 ]; then \
 		$(MAKE) run_vb; \
-	else \
-		$(MAKE) run_bochs; \
 	fi
 
 run_bochs: $(BUILD_DIR)/hd60M.img env
