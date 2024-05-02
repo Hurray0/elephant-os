@@ -1,5 +1,5 @@
 include ../include.mk
-LIB = -I ./lib/kernel/ -I ./lib/ -I ./kernel/ -I ./thread/ -I ./device/ -I ./userprog/ -I ./lib/user/
+LIB = -I ./lib/kernel/ -I ./lib/ -I ./kernel/ -I ./thread/ -I ./device/ -I ./userprog/ -I ./lib/user/ -I ./fs/
 ASLIB = -I ./boot/include/
 ASFLAGS = -f elf
 LDFLAGS = -m elf_i386 -Ttext $(ENTRY_POINT) -e main
@@ -29,7 +29,8 @@ OBJS = $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/syscall-init.o \
 		$(BUILD_DIR)/stdio.o \
 		$(BUILD_DIR)/ide.o \
-		$(BUILD_DIR)/stdio-kernel.o
+		$(BUILD_DIR)/stdio-kernel.o \
+		$(BUILD_DIR)/fs.o
 
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h kernel/memory.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
@@ -88,6 +89,19 @@ $(BUILD_DIR)/syscall-init.o: userprog/syscall-init.c userprog/syscall-init.h lib
 $(BUILD_DIR)/stdio.o: lib/stdio.c lib/stdio.h lib/user/syscall.h lib/string.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
+
+$(BUILD_DIR)/ide.o: device/ide.c device/ide.h lib/stdint.h thread/sync.h \
+    	lib/kernel/list.h kernel/global.h thread/thread.h lib/kernel/bitmap.h \
+     	kernel/memory.h lib/kernel/io.h lib/stdio.h lib/stdint.h lib/kernel/stdio-kernel.h \
+	kernel/interrupt.h kernel/debug.h device/console.h device/timer.h lib/string.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/stdio-kernel.o: lib/kernel/stdio-kernel.c lib/kernel/stdio-kernel.h lib/kernel/print.h device/console.h lib/stdio.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/fs.o: fs/fs.c fs/fs.h kernel/debug.h fs/dir.h kernel/global.h device/ide.h fs/inode.h lib/kernel/list.h kernel/memory.h lib/stdint.h lib/kernel/stdio-kernel.h lib/string.h fs/super_block.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
 ################ 汇编代码编译 ################
 BOOT = $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin
 
@@ -107,15 +121,6 @@ $(BUILD_DIR)/kernel.o: kernel/kernel.asm
 
 $(BUILD_DIR)/switch.o: thread/switch.asm
 	@$(AS) $(ASFLAGS) -o $@ $^
-
-$(BUILD_DIR)/ide.o: device/ide.c device/ide.h lib/stdint.h thread/sync.h \
-    	lib/kernel/list.h kernel/global.h thread/thread.h lib/kernel/bitmap.h \
-     	kernel/memory.h lib/kernel/io.h lib/stdio.h lib/stdint.h lib/kernel/stdio-kernel.h \
-	kernel/interrupt.h kernel/debug.h device/console.h device/timer.h lib/string.h
-	@$(GCC) $(CFLAGS) $< -o $@
-
-$(BUILD_DIR)/stdio-kernel.o: lib/kernel/stdio-kernel.c lib/kernel/stdio-kernel.h lib/kernel/print.h device/console.h lib/stdio.h
-	@$(GCC) $(CFLAGS) $< -o $@
 
 ################ 链接 ################
 KERNEL = $(BUILD_DIR)/kernel.bin

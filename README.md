@@ -19,8 +19,8 @@ Based on 《操作系统-真象还原》 郑钢 著
 ### mac环境搭建
 我这边使用的`bochs`为比较新的2.8版本，指令和2.6版本略有不同。
 改动：
-2.6: `bximage -hd -mode="flat" --size=60 -q hd60M.img`
-2.8: `bximage -hd=60M -func="create" -q hd60M.img; fi`
+* bochs 2.6: `bximage -hd -mode="flat" --size=60 -q hd60M.img`
+* bochs 2.8: `bximage -hd=60M -func="create" -q hd60M.img`
 
 除了按部就班安装`nasm`、`bochs`外，在使用c语言编写kernel时，MAC环境下的gcc不适用（M1芯片），需要安装`x86_64-elf-gcc`和`x86_64-elf-binutils`。
 具体是：
@@ -361,6 +361,19 @@ __PS.对应书中第13章（编写硬盘驱动程序）__
 PPS. 本章在mac/linux上分区的硬盘文件(hd80M.img)分区大小、类型等不太一致，请忽略相关细节。
 
 ![13.硬盘驱动.svg](./doc/image/13.硬盘驱动.svg)
+
+
+
+### 23.file_system - 创建文件系统
+目录链接：[23.file_system](./23.file_system)
+
+
+__PS.对应书中第14章（文件系统）中的14.1~14.2节（创建文件系统）__
+
+需要注意的是：
+(踩了4.5h的坑，终于解决了QAQ)
+`qemu`/`virtualbox`虚拟机中，写硬盘有些问题。具体是`fs/fs.c`中`ide_write()`如果一次写多个扇区，在后续`ide_read()`中将会在信号量处阻塞，即不会收到读硬盘的中断信号。
+所以，`partition_format()`函数中我们一次只写一个扇区，用循环写入多个扇区。
 
 
 
