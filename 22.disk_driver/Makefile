@@ -5,7 +5,8 @@ ASFLAGS = -f elf
 LDFLAGS = -m elf_i386 -Ttext $(ENTRY_POINT) -e main
 CFLAGS = -m32 -c $(LIB) -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -mno-sse # 这里加上-mno-sse是为了解决macOS下编译时出现的错误
 
-all: $(BUILD_DIR)/hd60M.img debug-asm
+all: $(BUILD_DIR)/hd80M.img $(BUILD_DIR)/hd60M.img debug-asm
+# all: $(BUILD_DIR)/hd60M.img debug-asm
 
 ################ c代码编译 ################
 OBJS = $(BUILD_DIR)/main.o \
@@ -26,7 +27,9 @@ OBJS = $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/process.o \
 		$(BUILD_DIR)/syscall.o \
 		$(BUILD_DIR)/syscall-init.o \
-		$(BUILD_DIR)/stdio.o
+		$(BUILD_DIR)/stdio.o \
+		$(BUILD_DIR)/ide.o \
+		$(BUILD_DIR)/stdio-kernel.o
 
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h kernel/memory.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
@@ -105,6 +108,15 @@ $(BUILD_DIR)/kernel.o: kernel/kernel.asm
 $(BUILD_DIR)/switch.o: thread/switch.asm
 	@$(AS) $(ASFLAGS) -o $@ $^
 
+$(BUILD_DIR)/ide.o: device/ide.c device/ide.h lib/stdint.h thread/sync.h \
+    	lib/kernel/list.h kernel/global.h thread/thread.h lib/kernel/bitmap.h \
+     	kernel/memory.h lib/kernel/io.h lib/stdio.h lib/stdint.h lib/kernel/stdio-kernel.h \
+	kernel/interrupt.h kernel/debug.h device/console.h device/timer.h lib/string.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/stdio-kernel.o: lib/kernel/stdio-kernel.c lib/kernel/stdio-kernel.h lib/kernel/print.h device/console.h lib/stdio.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
 ################ 链接 ################
 KERNEL = $(BUILD_DIR)/kernel.bin
 $(BUILD_DIR)/kernel.bin: $(OBJS)
@@ -116,3 +128,21 @@ $(BUILD_DIR)/hd60M.img: $(BUILD_DIR) $(BOOT) $(KERNEL)
 	@dd if=$(BUILD_DIR)/mbr.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=1 conv=notrunc
 	@dd if=$(BUILD_DIR)/loader.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=4 seek=2 conv=notrunc
 	@dd if=$(BUILD_DIR)/kernel.bin of=$(BUILD_DIR)/hd60M.img bs=512 count=200 seek=9 conv=notrunc
+
+$(BUILD_DIR)/hd80M_no.img: $(BUILD_DIR)
+	@if [ ! -f $(BUILD_DIR)/hd80M.img ]; then bximage -hd=80M -func="create" -q $(BUILD_DIR)/hd80M_no.img; fi
+
+partitionDisk-mac: $(BUILD_DIR)/hd80M_no.img
+	@DEVICE=$$(hdiutil attach -nomount $(BUILD_DIR)/hd80M_no.img | cut -f 1); \
+	diskutil partitionDisk $$DEVICE 5 MBR "MS-DOS FAT12" "BOOT" 20M "MS-DOS FAT12" "ROOT1" 10M "MS-DOS FAT12" "ROOT2" 10M "MS-DOS FAT12" "ROOT3" 10M "MS-DOS FAT12" "ROOT4" 10M; \
+	hdiutil detach $$DEVICE; \
+	hdiutil pmap $(BUILD_DIR)/hd80M_no.img
+	@mv $(BUILD_DIR)/hd80M_no.img $(BUILD_DIR)/hd80M.img
+
+# 还没有测试
+partitionDisk-linux: $(BUILD_DIR)/hd80M_no.img
+	@echo -e "x\nc\n162\nh\n16\nr\nn\np\n1\n2048\n18175\nn\ne\n4\n18432\n163295\nn\n20480\n29551\nn\n32768\n45367\nn\n49152\n70000\nn\n130000\n163295\nt\n5\n66\nt\n6\n66\nt\n7\n66\nt\n8\n66\nw\n" | fdisk $(BUILD_DIR)/hd80M_no.img
+	@mv $(BUILD_DIR)/hd80M_no.img $(BUILD_DIR)/hd80M.img
+
+$(BUILD_DIR)/hd80M.img:
+	make partitionDisk-$(OS)
