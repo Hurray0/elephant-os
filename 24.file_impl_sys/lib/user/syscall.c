@@ -45,7 +45,7 @@
 uint32_t getpid() { return _syscall0(SYS_GETPID); }
 
 /* 打印字符串str */
-uint32_t write(char *str) { return _syscall1(SYS_WRITE, str); }
+uint32_t write(int32_t fd, const void *buf, uint32_t count) { return _syscall3(SYS_WRITE, fd, buf, count); }
 
 /* 申请size字节大小的内存，并返回其首地址 */
 void *malloc(uint32_t size) { return (void *)_syscall1(SYS_MALLOC, size); }

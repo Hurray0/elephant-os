@@ -1,13 +1,15 @@
 #include "console.h"
+#include "fs.h"
 #include "init.h"
 #include "interrupt.h"
+#include "memory.h"
 #include "print.h"
 #include "process.h"
 #include "stdio.h"
+#include "string.h"
 #include "syscall-init.h"
 #include "syscall.h"
 #include "thread.h"
-#include "memory.h"
 
 void k_thread_a(void *);
 void k_thread_b(void *);
@@ -21,6 +23,53 @@ int main(void) {
   process_execute(u_prog_b, "u_prog_b");
   thread_start("k_thread_a", 31, k_thread_a, "I am thread_a");
   thread_start("k_thread_b", 31, k_thread_b, "I am thread_b");
+
+  // 新建文件
+  uint32_t fd = sys_open("/file1", O_CREAT);
+  sys_close(fd);
+
+  // 写文件
+  fd = sys_open("/file1", O_RDWR);
+  printf("fd: %d\n", fd);
+  char *str = "Hello, Hurray!\n";
+  sys_write(fd, str, strlen(str));
+  sys_close(fd);
+  printf("%d closed now\n", fd);
+
+  // 读文件
+  fd = sys_open("/file1", O_RDWR);
+  printf("open /file1, fd: %d\n", fd);
+  char buf[64] = {0};
+  int read_bytes = sys_read(fd, buf, 18);
+  printf("1_ read %d bytes: %s\n", read_bytes, buf);
+
+  memset(buf, 0, 64);
+  read_bytes = sys_read(fd, buf, 6);
+  printf("2_ read %d bytes: %s\n", read_bytes, buf);
+
+  memset(buf, 0, 64);
+  read_bytes = sys_read(fd, buf, 6);
+  printf("3_ read %d bytes: %s\n", read_bytes, buf);
+
+  // 关闭文件后再次打开
+  printf("________  close file1 and reopen  ________\n");
+  sys_close(fd);
+  fd = sys_open("/file1", O_RDWR);
+  memset(buf, 0, 64);
+  read_bytes = sys_read(fd, buf, 24);
+  printf("4_ read %d bytes:\n%s\n", read_bytes, buf);
+
+  // 测试lseek
+  printf("________  SEEK_SET 0  ________\n");
+  sys_lseek(fd, 0, SEEK_SET);
+  memset(buf, 0, 64);
+  read_bytes = sys_read(fd, buf, 24);
+  printf("5_ seek_set0 read %d bytes:\n%s\n", read_bytes, buf);
+
+  sys_close(fd);
+
+  // 删除文件, 需要之前的都确保sys_close
+  printf("/file1 delete %s!\n", sys_unlink("/file1") == 0 ? "done" : "fail");
   while (1)
     ;
   return 0;

@@ -30,7 +30,10 @@ OBJS = $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/stdio.o \
 		$(BUILD_DIR)/ide.o \
 		$(BUILD_DIR)/stdio-kernel.o \
-		$(BUILD_DIR)/fs.o
+		$(BUILD_DIR)/fs.o \
+		$(BUILD_DIR)/inode.o \
+		$(BUILD_DIR)/file.o \
+		$(BUILD_DIR)/dir.o
 
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h kernel/memory.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
@@ -83,12 +86,11 @@ $(BUILD_DIR)/process.o: userprog/process.c userprog/process.h device/console.h k
 $(BUILD_DIR)/syscall.o: lib/user/syscall.c lib/user/syscall.h lib/stdint.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/syscall-init.o: userprog/syscall-init.c userprog/syscall-init.h lib/stdint.h lib/kernel/print.h lib/user/syscall.h device/console.h lib/string.h
+$(BUILD_DIR)/syscall-init.o: userprog/syscall-init.c userprog/syscall-init.h lib/stdint.h lib/kernel/print.h lib/user/syscall.h device/console.h lib/string.h fs/fs.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/stdio.o: lib/stdio.c lib/stdio.h lib/user/syscall.h lib/string.h
 	@$(GCC) $(CFLAGS) $< -o $@
-
 
 $(BUILD_DIR)/ide.o: device/ide.c device/ide.h lib/stdint.h thread/sync.h \
     	lib/kernel/list.h kernel/global.h thread/thread.h lib/kernel/bitmap.h \
@@ -99,7 +101,19 @@ $(BUILD_DIR)/ide.o: device/ide.c device/ide.h lib/stdint.h thread/sync.h \
 $(BUILD_DIR)/stdio-kernel.o: lib/kernel/stdio-kernel.c lib/kernel/stdio-kernel.h lib/kernel/print.h device/console.h lib/stdio.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/fs.o: fs/fs.c fs/fs.h kernel/debug.h fs/dir.h kernel/global.h device/ide.h fs/inode.h lib/kernel/list.h kernel/memory.h lib/stdint.h lib/kernel/stdio-kernel.h lib/string.h fs/super_block.h
+$(BUILD_DIR)/fs.o: fs/fs.c fs/fs.h kernel/debug.h fs/dir.h kernel/global.h \
+					device/ide.h fs/inode.h lib/kernel/list.h kernel/memory.h \
+					lib/stdint.h lib/kernel/stdio-kernel.h lib/string.h fs/super_block.h \
+					fs/file.h device/console.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/inode.o: fs/inode.c fs/inode.h kernel/debug.h fs/fs.h kernel/global.h device/ide.h lib/kernel/list.h kernel/memory.h lib/stdint.h lib/kernel/stdio-kernel.h lib/string.h fs/super_block.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/file.o: fs/file.c fs/file.h kernel/debug.h fs/fs.h kernel/global.h fs/inode.h kernel/interrupt.h kernel/memory.h lib/kernel/stdio-kernel.h lib/string.h fs/super_block.h thread/thread.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/dir.o: fs/dir.c fs/dir.h kernel/debug.h fs/file.h fs/fs.h kernel/global.h fs/inode.h kernel/interrupt.h kernel/memory.h lib/stdint.h lib/kernel/stdio-kernel.h lib/string.h fs/super_block.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 ################ 汇编代码编译 ################
