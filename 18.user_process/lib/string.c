@@ -63,8 +63,10 @@ uint32_t strlen(const char *str) {
 int8_t strcmp(const char *a, const char *b) {
   DEBUG_CMD
   ASSERT(a != NULL && b != NULL);
-  while (*a != 0 && *a++ == *b++)
-    ;
+  while (*a != 0 && *a == *b) {
+    a++;
+    b++;
+  }
   return *a < *b ? -1 : *a > *b;
 }
 
