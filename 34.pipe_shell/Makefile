@@ -224,7 +224,7 @@ cmds-cat: all
 	@$(AS) -f elf ./command/start2.S -o $(BUILD_DIR)/start2.o
 	@$(GCC) -m32 -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -I ./lib -I ./lib/kernel/ -I ./lib/user/ -I ./kernel/ -I ./device/ -I ./thread -I ./userprog/ -I ./fs -I ./shell command/cat.c -o $(BUILD_DIR)/cat.o
 	@$(LD) -m elf_i386 $(BUILD_DIR)/cat.o $(BUILD_DIR)/string.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/stdio.o $(BUILD_DIR)/assert.o $(BUILD_DIR)/start2.o -o $(BUILD_DIR)/cat
-	@dd if=$(BUILD_DIR)/cat of=$(BUILD_DIR)/hd60M.img bs=512 count=32 seek=500 conv=notrunc
+	@dd if=$(BUILD_DIR)/cat of=$(BUILD_DIR)/hd60M.img bs=512 count=50 seek=500 conv=notrunc
 
 cmds-pipe: cmds-cat
 	@$(GCC) -m32 -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -Wno-unused-parameter -I ./lib -I ./lib/kernel/ -I ./lib/user/ -I ./kernel/ -I ./device/ -I ./thread -I ./userprog/ -I ./fs -I ./shell command/prog_pipe.c -o $(BUILD_DIR)/prog_pipe.o

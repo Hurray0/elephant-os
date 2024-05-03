@@ -4,13 +4,13 @@
 #include "fork.h"
 #include "fs.h"
 #include "memory.h"
+#include "pipe.h"
 #include "print.h"
 #include "stdint.h"
 #include "string.h"
 #include "syscall.h"
 #include "thread.h"
 #include "wait_exit.h"
-#include "pipe.h"
 
 #define syscall_nr 32 // 系统调用数量
 typedef void *syscall;
@@ -48,5 +48,7 @@ void syscall_init(void) {
   syscall_table[SYS_EXIT] = sys_exit;
   syscall_table[SYS_WAIT] = sys_wait;
   syscall_table[SYS_PIPE] = sys_pipe;
+  syscall_table[SYS_FD_REDIRECT] = sys_fd_redirect;
+  syscall_table[SYS_HELP] = sys_help;
   put_str("syscall_init done\n");
 }

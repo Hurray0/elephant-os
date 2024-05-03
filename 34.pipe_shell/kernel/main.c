@@ -58,7 +58,7 @@ int main(void) {
     }
   }
 
-  file_size = 5476;
+  file_size = 5698;
   sec_cnt = DIV_ROUND_UP(file_size, 512);
   sda = &channels[0].devices[0];
   prog_buf = sys_malloc(file_size);
