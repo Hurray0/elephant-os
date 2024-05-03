@@ -9,6 +9,7 @@
 #include "process.h"
 #include "shell.h"
 #include "stdio.h"
+#include "string.h"
 #include "syscall-init.h"
 #include "syscall.h"
 #include "thread.h"
@@ -56,6 +57,34 @@ int main(void) {
         ;
     }
   }
+
+  file_size = 5476;
+  sec_cnt = DIV_ROUND_UP(file_size, 512);
+  sda = &channels[0].devices[0];
+  prog_buf = sys_malloc(file_size);
+  // ide_read(sda, 500, prog_buf, sec_cnt);
+  for (uint32_t i = 0; i < sec_cnt; i++) {
+    ide_read(sda, 500 + i, prog_buf + i * 512, 1);
+  }
+  int32_t fd3 = sys_open("/cat", O_CREAT | O_RDWR);
+  if (fd3 != -1) {
+    if (sys_write(fd3, prog_buf, file_size) == -1) {
+      printk("file write error!\n");
+      while (1)
+        ;
+    }
+  }
+
+  // 新建文件
+  uint32_t fd4 = sys_open("/file1", O_CREAT);
+  sys_close(fd4);
+
+  // 写文件
+  fd4 = sys_open("/file1", O_RDWR);
+  printf("fd: %d\n", fd4);
+  char *str = "Hello, Hurray!\n";
+  sys_write(fd4, str, strlen(str));
+  sys_close(fd4);
   /*************    写入应用程序结束   *************/
   cls_screen();
   console_put_str("[rabbit@localhost /]$ ");

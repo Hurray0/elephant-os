@@ -38,7 +38,8 @@ OBJS = $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/assert.o \
 		$(BUILD_DIR)/shell.o \
 		$(BUILD_DIR)/buildin_cmd.o \
-		$(BUILD_DIR)/exec.o
+		$(BUILD_DIR)/exec.o \
+		$(BUILD_DIR)/wait_exit.o
 
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h kernel/memory.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
@@ -88,7 +89,7 @@ $(BUILD_DIR)/tss.o: userprog/tss.c userprog/tss.h lib/stdint.h lib/kernel/print.
 $(BUILD_DIR)/process.o: userprog/process.c userprog/process.h device/console.h kernel/debug.h kernel/global.h kernel/interrupt.h lib/kernel/list.h kernel/memory.h lib/string.h thread/thread.h userprog/tss.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/syscall.o: lib/user/syscall.c lib/user/syscall.h lib/stdint.h
+$(BUILD_DIR)/syscall.o: lib/user/syscall.c lib/user/syscall.h lib/stdint.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/syscall-init.o: userprog/syscall-init.c userprog/syscall-init.h lib/stdint.h lib/kernel/print.h lib/user/syscall.h device/console.h lib/string.h fs/fs.h userprog/exec.h
@@ -134,6 +135,9 @@ $(BUILD_DIR)/buildin_cmd.o: shell/buildin_cmd.c shell/buildin_cmd.h lib/user/ass
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/exec.o: userprog/exec.c userprog/exec.h fs/fs.h kernel/global.h kernel/memory.h lib/kernel/stdio-kernel.h lib/string.h thread/thread.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/wait_exit.o: userprog/wait_exit.c userprog/wait_exit.h lib/kernel/bitmap.h kernel/debug.h fs/fs.h kernel/global.h lib/kernel/list.h kernel/memory.h lib/kernel/stdio-kernel.h lib/string.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 ################ 汇编代码编译 ################
@@ -185,9 +189,9 @@ partitionDisk-linux: $(BUILD_DIR)/hd80M_no.img
 $(BUILD_DIR)/hd80M.img:
 	@make partitionDisk-$(OS)
 
-cmds: cmds1 cmds2
+cmds: cmd-prog_no_arg cmds-prog_arg cmds-cat
 
-cmds1: all
+cmd-prog_no_arg: all
 #gcc -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes \
 #   -Wsystem-headers -I ../lib -o prog_no_arg.o prog_no_arg.c
 #ld -e main prog_no_arg.o ../build/string.o ../build/syscall.o\
@@ -198,7 +202,7 @@ cmds1: all
 	@$(LD) -m elf_i386 -e main $(BUILD_DIR)/prog_no_arg.o $(BUILD_DIR)/string.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/stdio.o $(BUILD_DIR)/assert.o -o $(BUILD_DIR)/prog_no_arg
 	@dd if=$(BUILD_DIR)/prog_no_arg of=$(BUILD_DIR)/hd60M.img bs=512 count=10 seek=300 conv=notrunc
 
-cmds2: all
+cmds-prog_arg: all
 #nasm -f elf ./start.S -o ./start.o
 #ar rcs simple_crt.a ../build/string.o ../build/syscall.o \
 #   ../build/stdio.o ../build/assert.o ./start.o
@@ -208,6 +212,12 @@ cmds2: all
 #dd if=prog_arg of=/home/work/my_workspace/bochs/hd60M.img \
 #   bs=512 count=11 seek=300 conv=notrunc
 	@$(AS) -f elf ./command/start.S -o $(BUILD_DIR)/start.o
-	@$(GCC) -m32 -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -I ./lib -I ./lib/user -I ./fs command/prog_arg.c -o $(BUILD_DIR)/prog_arg.o
-	@$(LD) -m elf_i386 $(BUILD_DIR)/prog_arg.o $(BUILD_DIR)/string.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/stdio.o $(BUILD_DIR)/assert.o $(BUILD_DIR)/start.o -o $(BUILD_DIR)/prog_arg -L$(BUILD_DIR)
+	@$(GCC) -m32 -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -I ./lib -I ./lib/kernel/ -I ./lib/user/ -I ./kernel/ -I ./device/ -I ./thread -I ./userprog/ -I ./fs -I ./shell command/prog_arg.c -o $(BUILD_DIR)/prog_arg.o
+	@$(LD) -m elf_i386 $(BUILD_DIR)/prog_arg.o $(BUILD_DIR)/string.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/stdio.o $(BUILD_DIR)/assert.o $(BUILD_DIR)/start.o -o $(BUILD_DIR)/prog_arg
 	@dd if=$(BUILD_DIR)/prog_arg of=$(BUILD_DIR)/hd60M.img bs=512 count=11 seek=400 conv=notrunc
+
+cmds-cat: all
+	@$(AS) -f elf ./command/start2.S -o $(BUILD_DIR)/start2.o
+	@$(GCC) -m32 -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -I ./lib -I ./lib/kernel/ -I ./lib/user/ -I ./kernel/ -I ./device/ -I ./thread -I ./userprog/ -I ./fs -I ./shell command/cat.c -o $(BUILD_DIR)/cat.o
+	@$(LD) -m elf_i386 $(BUILD_DIR)/cat.o $(BUILD_DIR)/string.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/stdio.o $(BUILD_DIR)/assert.o $(BUILD_DIR)/start2.o -o $(BUILD_DIR)/cat
+	@dd if=$(BUILD_DIR)/cat of=$(BUILD_DIR)/hd60M.img bs=512 count=32 seek=500 conv=notrunc

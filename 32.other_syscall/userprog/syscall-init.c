@@ -9,6 +9,7 @@
 #include "string.h"
 #include "syscall.h"
 #include "thread.h"
+#include "wait_exit.h"
 
 #define syscall_nr 32 // 系统调用数量
 typedef void *syscall;
@@ -43,5 +44,7 @@ void syscall_init(void) {
   syscall_table[SYS_STAT] = sys_stat;
   syscall_table[SYS_PS] = sys_ps;
   syscall_table[SYS_EXECV] = sys_execv;
+  syscall_table[SYS_EXIT] = sys_exit;
+  syscall_table[SYS_WAIT] = sys_wait;
   put_str("syscall_init done\n");
 }
