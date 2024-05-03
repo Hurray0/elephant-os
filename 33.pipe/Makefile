@@ -39,7 +39,8 @@ OBJS = $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/shell.o \
 		$(BUILD_DIR)/buildin_cmd.o \
 		$(BUILD_DIR)/exec.o \
-		$(BUILD_DIR)/wait_exit.o
+		$(BUILD_DIR)/wait_exit.o \
+		$(BUILD_DIR)/pipe.o
 
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h kernel/memory.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
@@ -140,6 +141,9 @@ $(BUILD_DIR)/exec.o: userprog/exec.c userprog/exec.h fs/fs.h kernel/global.h ker
 $(BUILD_DIR)/wait_exit.o: userprog/wait_exit.c userprog/wait_exit.h lib/kernel/bitmap.h kernel/debug.h fs/fs.h kernel/global.h lib/kernel/list.h kernel/memory.h lib/kernel/stdio-kernel.h lib/string.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
+$(BUILD_DIR)/pipe.o: shell/pipe.c shell/pipe.h fs/file.h fs/fs.h device/ioqueue.h kernel/memory.h thread/thread.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
 ################ 汇编代码编译 ################
 BOOT = $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin
 
@@ -189,7 +193,7 @@ partitionDisk-linux: $(BUILD_DIR)/hd80M_no.img
 $(BUILD_DIR)/hd80M.img:
 	@make partitionDisk-$(OS)
 
-cmds: cmd-prog_no_arg cmds-prog_arg cmds-cat
+cmds: cmd-prog_no_arg cmds-prog_arg cmds-cat cmds-pipe
 
 cmd-prog_no_arg: all
 #gcc -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes \
@@ -221,3 +225,8 @@ cmds-cat: all
 	@$(GCC) -m32 -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -I ./lib -I ./lib/kernel/ -I ./lib/user/ -I ./kernel/ -I ./device/ -I ./thread -I ./userprog/ -I ./fs -I ./shell command/cat.c -o $(BUILD_DIR)/cat.o
 	@$(LD) -m elf_i386 $(BUILD_DIR)/cat.o $(BUILD_DIR)/string.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/stdio.o $(BUILD_DIR)/assert.o $(BUILD_DIR)/start2.o -o $(BUILD_DIR)/cat
 	@dd if=$(BUILD_DIR)/cat of=$(BUILD_DIR)/hd60M.img bs=512 count=32 seek=500 conv=notrunc
+
+cmds-pipe: cmds-cat
+	@$(GCC) -m32 -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -Wno-unused-parameter -I ./lib -I ./lib/kernel/ -I ./lib/user/ -I ./kernel/ -I ./device/ -I ./thread -I ./userprog/ -I ./fs -I ./shell command/prog_pipe.c -o $(BUILD_DIR)/prog_pipe.o
+	@$(LD) -m elf_i386 $(BUILD_DIR)/prog_pipe.o $(BUILD_DIR)/string.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/stdio.o $(BUILD_DIR)/assert.o $(BUILD_DIR)/start2.o -o $(BUILD_DIR)/prog_pipe
+	@dd if=$(BUILD_DIR)/prog_pipe of=$(BUILD_DIR)/hd60M.img bs=512 count=32 seek=450 conv=notrunc

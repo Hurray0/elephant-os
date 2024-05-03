@@ -1,10 +1,12 @@
 #include "wait_exit.h"
 #include "bitmap.h"
 #include "debug.h"
+#include "file.h"
 #include "fs.h"
 #include "global.h"
 #include "list.h"
 #include "memory.h"
+#include "pipe.h"
 #include "stdio-kernel.h"
 #include "thread.h"
 
@@ -58,12 +60,20 @@ static void release_prog_resource(struct task_struct *release_thread) {
   mfree_page(PF_KERNEL, user_vaddr_pool_bitmap, bitmap_pg_cnt);
 
   /* 关闭进程打开的文件 */
-  uint8_t fd_idx = 3;
-  while (fd_idx < MAX_FILES_OPEN_PER_PROC) {
-    if (release_thread->fd_table[fd_idx] != -1) {
-      sys_close(fd_idx);
+  uint8_t local_fd = 3;
+  while (local_fd < MAX_FILES_OPEN_PER_PROC) {
+    if (release_thread->fd_table[local_fd] != -1) {
+      if (is_pipe(local_fd)) {
+        uint32_t global_fd = fd_local2global(local_fd);
+        if (--file_table[global_fd].fd_pos == 0) {
+          mfree_page(PF_KERNEL, file_table[global_fd].fd_inode, 1);
+          file_table[global_fd].fd_inode = NULL;
+        }
+      } else {
+        sys_close(local_fd);
+      }
     }
-    fd_idx++;
+    local_fd++;
   }
 }
 

@@ -428,3 +428,69 @@ __PS.对应书中第15章（系统交互）中的15.2~15.4节（实现一个简�
 
 
 
+### 29.shell_syscall - shell命令实现
+目录链接：[29.shell_syscall](./29.shell_syscall)
+
+
+__PS.对应书中第15章（系统交互）中的15.4节后半部分__
+
+本章实现了`ls`/`cd`/`pwd`/`ps`/`clear`/`mkdir`/`rmdir`/`rm`命令的实现。
+
+
+
+### 30.user_process - 用户程序
+目录链接：[30.user_process](./30.user_process)
+
+
+__PS.对应书中第15章（系统交互）中的15.5节（加载用户程序）__
+
+从硬盘`sda`加载用户程序保存到文件系统(硬盘`sdb`)，并在shell中执行用户程序。
+
+
+
+### 31.user_process_arg - 用户带参程序
+目录链接：[31.user_process_arg](./31.user_process_arg)
+
+
+__PS.对应书中第15章（系统交互）中的15.5节（加载用户程序）__
+
+新增一个带参的用户程序，实现用户程序的参数传递。为保持独立性，将新的用户程序位置写在硬盘`sda`的seek=400的位置。
+具体用法为：
+```shell
+./prog_arg prog_no_arg
+```
+
+
+
+### 32.other_syscall - 其他系统调用
+目录链接：[32.other_syscall](./32.other_syscall)
+
+
+__PS.对应书中第15章（系统交互）中的15.6节（实现系统调用wait和exit）__
+
+本章实现了`wait`/`exit`/`cat`。
+
+
+
+### 33.pipe - 管道程序
+目录链接：[33.pipe](./33.pipe)
+
+
+__PS.对应书中第15章（系统交互）中的15.7节（管道）__
+
+实现管道用户程序。
+
+本节需要注意的是，`prog_pipe.c`中的数组初始化会导致运行报错。应该为手动设值。
+```c
+char buf[32] = {0};
+```
+改为
+```c
+char buf[32];
+for (int i = 0; i < 32; i++) {
+    buf[i] = 0;
+}
+```
+
+
+

@@ -10,6 +10,7 @@
 #include "keyboard.h"
 #include "list.h"
 #include "memory.h"
+#include "pipe.h"
 #include "stdint.h"
 #include "stdio-kernel.h"
 #include "string.h"
@@ -414,7 +415,7 @@ int32_t sys_open(const char *pathname, uint8_t flags) {
 }
 
 /* 将文件描述符转化为文件表的下标 */
-static uint32_t fd_local2global(uint32_t local_fd) {
+uint32_t fd_local2global(uint32_t local_fd) {
   struct task_struct *cur = running_thread();
   int32_t global_fd = cur->fd_table[local_fd];
   ASSERT(global_fd >= 0 && global_fd < MAX_FILE_OPEN);
@@ -425,8 +426,17 @@ static uint32_t fd_local2global(uint32_t local_fd) {
 int32_t sys_close(int32_t fd) {
   int32_t ret = -1; // 返回值默认为-1,即失败
   if (fd > 2) {
-    uint32_t _fd = fd_local2global(fd);
-    ret = file_close(&file_table[_fd]);
+    uint32_t global_fd = fd_local2global(fd);
+    if (is_pipe(fd)) {
+      /* 如果此管道上的描述符都被关闭,释放管道的环形缓冲区 */
+      if (--file_table[global_fd].fd_pos == 0) {
+        mfree_page(PF_KERNEL, file_table[global_fd].fd_inode, 1);
+        file_table[global_fd].fd_inode = NULL;
+      }
+      ret = 0;
+    } else {
+      ret = file_close(&file_table[global_fd]);
+    }
     running_thread()->fd_table[fd] = -1; // 使该文件描述符位可用
   }
   return ret;
@@ -439,20 +449,28 @@ int32_t sys_write(int32_t fd, const void *buf, uint32_t count) {
     return -1;
   }
   if (fd == stdout_no) {
-    char tmp_buf[1024] = {0};
-    memcpy(tmp_buf, buf, count);
-    console_put_str(tmp_buf);
-    return count;
-  }
-  uint32_t _fd = fd_local2global(fd);
-  struct file *wr_file = &file_table[_fd];
-  if (wr_file->fd_flag & O_WRONLY || wr_file->fd_flag & O_RDWR) {
-    uint32_t bytes_written = file_write(wr_file, buf, count);
-    return bytes_written;
+    /* 标准输出有可能被重定向为管道缓冲区, 因此要判断 */
+    if (is_pipe(fd)) {
+      return pipe_write(fd, buf, count);
+    } else {
+      char tmp_buf[1024] = {0};
+      memcpy(tmp_buf, buf, count);
+      console_put_str(tmp_buf);
+      return count;
+    }
+  } else if (is_pipe(fd)) { /* 若是管道就调用管道的方法 */
+    return pipe_write(fd, buf, count);
   } else {
-    console_put_str("sys_write: not allowed to write file without flag O_RDWR "
-                    "or O_WRONLY\n");
-    return -1;
+    uint32_t _fd = fd_local2global(fd);
+    struct file *wr_file = &file_table[_fd];
+    if (wr_file->fd_flag & O_WRONLY || wr_file->fd_flag & O_RDWR) {
+      uint32_t bytes_written = file_write(wr_file, buf, count);
+      return bytes_written;
+    } else {
+      console_put_str("sys_write: not allowed to write file without flag "
+                      "O_RDWR or O_WRONLY\n");
+      return -1;
+    }
   }
 }
 
@@ -461,20 +479,28 @@ int32_t sys_write(int32_t fd, const void *buf, uint32_t count) {
 int32_t sys_read(int32_t fd, void *buf, uint32_t count) {
   ASSERT(buf != NULL);
   int32_t ret = -1;
+  uint32_t global_fd = 0;
   if (fd < 0 || fd == stdout_no || fd == stderr_no) {
     printk("sys_read: fd error\n");
   } else if (fd == stdin_no) {
-    char *buffer = buf;
-    uint32_t bytes_read = 0;
-    while (bytes_read < count) {
-      *buffer = ioq_getchar(&kbd_buf);
-      bytes_read++;
-      buffer++;
+    /* 标准输入有可能被重定向为管道缓冲区, 因此要判断 */
+    if (is_pipe(fd)) {
+      ret = pipe_read(fd, buf, count);
+    } else {
+      char *buffer = buf;
+      uint32_t bytes_read = 0;
+      while (bytes_read < count) {
+        *buffer = ioq_getchar(&kbd_buf);
+        bytes_read++;
+        buffer++;
+      }
+      ret = (bytes_read == 0 ? -1 : (int32_t)bytes_read);
     }
-    ret = (bytes_read == 0 ? -1 : (int32_t)bytes_read);
+  } else if (is_pipe(fd)) { /* 若是管道就调用管道的方法 */
+    ret = pipe_read(fd, buf, count);
   } else {
-    uint32_t _fd = fd_local2global(fd);
-    ret = file_read(&file_table[_fd], buf, count);
+    global_fd = fd_local2global(fd);
+    ret = file_read(&file_table[global_fd], buf, count);
   }
   return ret;
 }
@@ -740,9 +766,9 @@ int32_t sys_rmdir(const char *pathname) {
   /* 先检查待删除的文件是否存在 */
   struct path_search_record searched_record;
   memset(&searched_record, 0, sizeof(struct path_search_record));
-  int inode_no = search_file(pathname, &searched_record);
+  int32_t inode_no = search_file(pathname, &searched_record);
   ASSERT(inode_no != 0);
-  int retval = -1; // 默认返回值
+  int32_t retval = -1; // 默认返回值
   if (inode_no == -1) {
     printk("In %s, sub path %s not exist\n", pathname,
            searched_record.searched_path);
@@ -845,6 +871,7 @@ char *sys_getcwd(char *buf, uint32_t size) {
   if (child_inode_nr == 0) {
     buf[0] = '/';
     buf[1] = 0;
+    sys_free(io_buf);
     return buf;
   }
 

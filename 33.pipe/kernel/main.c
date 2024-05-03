@@ -75,6 +75,23 @@ int main(void) {
     }
   }
 
+  file_size = 5343;
+  sec_cnt = DIV_ROUND_UP(file_size, 512);
+  sda = &channels[0].devices[0];
+  prog_buf = sys_malloc(file_size);
+  // ide_read(sda, 600, prog_buf, sec_cnt);
+  for (uint32_t i = 0; i < sec_cnt; i++) {
+    ide_read(sda, 450 + i, prog_buf + i * 512, 1);
+  }
+  int32_t fd5 = sys_open("/prog_pipe", O_CREAT | O_RDWR);
+  if (fd5 != -1) {
+    if (sys_write(fd5, prog_buf, file_size) == -1) {
+      printk("file write error!\n");
+      while (1)
+        ;
+    }
+  }
+
   // 新建文件
   uint32_t fd4 = sys_open("/file1", O_CREAT);
   sys_close(fd4);
@@ -97,8 +114,15 @@ int main(void) {
 void init(void) {
   uint32_t ret_pid = fork();
   if (ret_pid) { // 父进程
-    while (1)
-      ;
+    int status;
+    int child_pid;
+    /* init在此处不停的回收僵尸进程 */
+    while (1) {
+      child_pid = wait(&status);
+      printf("I`m init, My pid is 1, I recieve a child, It`s pid is %d, status "
+             "is %d\n",
+             child_pid, status);
+    }
   } else { // 子进程
     my_shell();
   }
