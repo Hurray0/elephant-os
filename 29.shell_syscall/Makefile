@@ -36,7 +36,8 @@ OBJS = $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/dir.o \
 		$(BUILD_DIR)/fork.o \
 		$(BUILD_DIR)/assert.o \
-		$(BUILD_DIR)/shell.o
+		$(BUILD_DIR)/shell.o \
+		$(BUILD_DIR)/buildin_cmd.o
 
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h kernel/memory.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
@@ -74,7 +75,7 @@ $(BUILD_DIR)/keyboard.o: device/keyboard.c device/keyboard.h lib/kernel/print.h 
 $(BUILD_DIR)/ioqueue.o: device/ioqueue.c device/ioqueue.h kernel/interrupt.h kernel/global.h kernel/debug.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/thread.o: thread/thread.c thread/thread.h lib/stdint.h lib/string.h kernel/global.h kernel/memory.h kernel/debug.h
+$(BUILD_DIR)/thread.o: thread/thread.c thread/thread.h lib/stdint.h lib/string.h kernel/global.h kernel/memory.h kernel/debug.h fs/file.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/sync.o: thread/sync.c thread/sync.h kernel/interrupt.h thread/thread.h kernel/debug.h
@@ -126,6 +127,9 @@ $(BUILD_DIR)/assert.o: lib/user/assert.c lib/user/assert.h lib/stdio.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/shell.o: shell/shell.c shell/shell.h lib/user/assert.h fs/file.h fs/fs.h kernel/global.h lib/stdint.h lib/stdio.h lib/string.h lib/user/syscall.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/buildin_cmd.o: shell/buildin_cmd.c shell/buildin_cmd.h lib/user/assert.h fs/dir.h fs/fs.h kernel/global.h shell/shell.h lib/stdint.h lib/stdio.h lib/string.h lib/user/syscall.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 ################ 汇编代码编译 ################

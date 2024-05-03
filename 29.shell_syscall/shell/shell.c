@@ -1,5 +1,6 @@
 #include "shell.h"
 #include "assert.h"
+#include "buildin_cmd.h"
 #include "file.h"
 #include "global.h"
 #include "stdint.h"
@@ -113,7 +114,7 @@ static int32_t cmd_parse(char *cmd_str, char **argv, char token) {
   return argc;
 }
 
-char *argv[MAX_ARG_NR]; // argv必须为全局变量，为了以后exec的程序可访问参数
+char *argv[MAX_ARG_NR]; // argv为全局变量，为了以后exec的程序可访问参数
 int32_t argc = -1;
 /* 简单的shell */
 void my_shell(void) {
@@ -133,13 +134,28 @@ void my_shell(void) {
       printf("num of arguments exceed %d\n", MAX_ARG_NR);
       continue;
     }
-
-    int32_t arg_idx = 0;
-    while (arg_idx < argc) {
-      printf("%s ", argv[arg_idx]);
-      arg_idx++;
+    if (!strcmp("ls", argv[0])) {
+      buildin_ls(argc, argv);
+    } else if (!strcmp("cd", argv[0])) {
+      if (buildin_cd(argc, argv) != NULL) {
+        memset(cwd_cache, 0, MAX_PATH_LEN);
+        strcpy(cwd_cache, final_path);
+      }
+    } else if (!strcmp("pwd", argv[0])) {
+      buildin_pwd(argc, argv);
+    } else if (!strcmp("ps", argv[0])) {
+      buildin_ps(argc, argv);
+    } else if (!strcmp("clear", argv[0])) {
+      buildin_clear(argc, argv);
+    } else if (!strcmp("mkdir", argv[0])) {
+      buildin_mkdir(argc, argv);
+    } else if (!strcmp("rmdir", argv[0])) {
+      buildin_rmdir(argc, argv);
+    } else if (!strcmp("rm", argv[0])) {
+      buildin_rm(argc, argv);
+    } else {
+      printf("external command\n");
     }
-    printf("\n");
   }
   panic("my_shell: should not be here");
 }
