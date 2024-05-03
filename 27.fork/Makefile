@@ -33,7 +33,8 @@ OBJS = $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/fs.o \
 		$(BUILD_DIR)/inode.o \
 		$(BUILD_DIR)/file.o \
-		$(BUILD_DIR)/dir.o
+		$(BUILD_DIR)/dir.o \
+		$(BUILD_DIR)/fork.o
 
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h kernel/memory.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
@@ -116,6 +117,9 @@ $(BUILD_DIR)/file.o: fs/file.c fs/file.h kernel/debug.h fs/fs.h kernel/global.h 
 $(BUILD_DIR)/dir.o: fs/dir.c fs/dir.h kernel/debug.h fs/file.h fs/fs.h kernel/global.h fs/inode.h kernel/interrupt.h kernel/memory.h lib/stdint.h lib/kernel/stdio-kernel.h lib/string.h fs/super_block.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
+$(BUILD_DIR)/fork.o: userprog/fork.c userprog/fork.h kernel/debug.h fs/file.h kernel/interrupt.h kernel/memory.h userprog/process.h lib/string.h thread/thread.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
 ################ 汇编代码编译 ################
 BOOT = $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin
 
@@ -153,7 +157,7 @@ $(BUILD_DIR)/hd80M_no.img: $(BUILD_DIR)
 
 partitionDisk-mac: $(BUILD_DIR)/hd80M_no.img
 	@DEVICE=$$(hdiutil attach -nomount $(BUILD_DIR)/hd80M_no.img | cut -f 1); \
-	diskutil partitionDisk $$DEVICE 5 MBR "MS-DOS FAT12" "BOOT" 20M "MS-DOS FAT12" "ROOT1" 10M "MS-DOS FAT12" "ROOT2" 10M "MS-DOS FAT12" "ROOT3" 10M "MS-DOS FAT12" "ROOT4" 10M; \
+	diskutil partitionDisk $$DEVICE 2 MBR "MS-DOS FAT12" "BOOT" 20M "MS-DOS FAT12" "ROOT1" 10M; \
 	hdiutil detach $$DEVICE; \
 	hdiutil pmap $(BUILD_DIR)/hd80M_no.img
 	@mv $(BUILD_DIR)/hd80M_no.img $(BUILD_DIR)/hd80M.img

@@ -125,23 +125,23 @@ static void partition_format(struct partition *part) {
   sb.root_inode_no = 0;
   sb.dir_entry_size = sizeof(struct dir_entry);
 
-  printk("%s info:\n", part->name);
-  printk("   magic:0x%x\n   part_lba_base:0x%x\n   all_sectors:0x%x\n   "
-         "inode_cnt:0x%x\n   block_bitmap_lba:0x%x\n   "
-         "block_bitmap_sectors:0x%x\n   inode_bitmap_lba:0x%x\n   "
-         "inode_bitmap_sectors:0x%x\n   inode_table_lba:0x%x\n   "
-         "inode_table_sectors:0x%x\n   data_start_lba:0x%x\n",
-         sb.magic, sb.part_lba_base, sb.sec_cnt, sb.inode_cnt,
-         sb.block_bitmap_lba, sb.block_bitmap_sects, sb.inode_bitmap_lba,
-         sb.inode_bitmap_sects, sb.inode_table_lba, sb.inode_table_sects,
-         sb.data_start_lba);
+  // printk("%s info:\n", part->name);
+  // printk("   magic:0x%x\n   part_lba_base:0x%x\n   all_sectors:0x%x\n   "
+  //        "inode_cnt:0x%x\n   block_bitmap_lba:0x%x\n   "
+  //        "block_bitmap_sectors:0x%x\n   inode_bitmap_lba:0x%x\n   "
+  //        "inode_bitmap_sectors:0x%x\n   inode_table_lba:0x%x\n   "
+  //        "inode_table_sectors:0x%x\n   data_start_lba:0x%x\n",
+  //        sb.magic, sb.part_lba_base, sb.sec_cnt, sb.inode_cnt,
+  //        sb.block_bitmap_lba, sb.block_bitmap_sects, sb.inode_bitmap_lba,
+  //        sb.inode_bitmap_sects, sb.inode_table_lba, sb.inode_table_sects,
+  //        sb.data_start_lba);
 
   struct disk *hd = part->my_disk;
   /*******************************
    * 1 将超级块写入本分区的1扇区 *
    ******************************/
   ide_write(hd, part->start_lba + 1, &sb, 1);
-  printk("   super_block_lba:0x%x\n", part->start_lba + 1);
+  // printk("   super_block_lba:0x%x\n", part->start_lba + 1);
 
   /* 找出数据量最大的元信息,用其尺寸做存储缓冲区*/
   uint32_t buf_size =
@@ -231,7 +231,7 @@ static void partition_format(struct partition *part) {
   /* sb.data_start_lba已经分配给了根目录,里面是根目录的目录项 */
   ide_write(hd, sb.data_start_lba, buf, 1);
 
-  printk("   root_dir_lba:0x%x\n", sb.data_start_lba);
+  // printk("   root_dir_lba:0x%x\n", sb.data_start_lba);
   printk("%s format done\n", part->name);
   sys_free(buf);
 }
@@ -955,7 +955,7 @@ void filesys_init() {
           if (sb_buf->magic == 0x19590318) {
             printk("%s has filesystem\n", part->name);
           } else { // 其它文件系统不支持,一律按无文件系统处理
-            printk("formatting %s`s partition %s......\n", hd->name,
+            printk("formatting %s`s partition %s...... ", hd->name,
                    part->name);
             partition_format(part);
           }
