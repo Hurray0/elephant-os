@@ -6,6 +6,7 @@
 #include "interrupt.h"
 #include "debug.h"
 #include "process.h"
+#include "print.h"
 #include "sync.h"
 #include "file.h"
 #include "stdio.h"

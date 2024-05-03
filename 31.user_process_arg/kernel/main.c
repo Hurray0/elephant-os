@@ -39,6 +39,23 @@ int main(void) {
         ;
     }
   }
+
+  file_size = 5307;
+  sec_cnt = DIV_ROUND_UP(file_size, 512);
+  sda = &channels[0].devices[0];
+  prog_buf = sys_malloc(file_size);
+  // ide_read(sda, 300, prog_buf, sec_cnt);
+  for (uint32_t i = 0; i < sec_cnt; i++) {
+    ide_read(sda, 400 + i, prog_buf + i * 512, 1);
+  }
+  int32_t fd2 = sys_open("/prog_arg", O_CREAT | O_RDWR);
+  if (fd2 != -1) {
+    if (sys_write(fd2, prog_buf, file_size) == -1) {
+      printk("file write error!\n");
+      while (1)
+        ;
+    }
+  }
   /*************    写入应用程序结束   *************/
   cls_screen();
   console_put_str("[rabbit@localhost /]$ ");

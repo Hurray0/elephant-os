@@ -1,11 +1,11 @@
 #ifndef __LIB_STRING_H
 #define __LIB_STRING_H
-#include "global.h"
-#include "print.h"
+#include "stdint.h"
 
 // #define DEBUG
 #ifdef DEBUG
 // 这里的__func__代表函数名，是个const char *，需要转换成char *
+#include "print.h"
 #define DEBUG_CMD put_str("debug_str: ");put_str((char *)__func__);put_str("\n");
 #else
 #define DEBUG_CMD ;

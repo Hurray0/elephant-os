@@ -183,15 +183,31 @@ partitionDisk-linux: $(BUILD_DIR)/hd80M_no.img
 	@mv $(BUILD_DIR)/hd80M_no.img $(BUILD_DIR)/hd80M.img
 
 $(BUILD_DIR)/hd80M.img:
-	make partitionDisk-$(OS)
+	@make partitionDisk-$(OS)
 
-cmds: all
+cmds: cmds1 cmds2
+
+cmds1: all
 #gcc -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes \
 #   -Wsystem-headers -I ../lib -o prog_no_arg.o prog_no_arg.c
 #ld -e main prog_no_arg.o ../build/string.o ../build/syscall.o\
 #   ../build/stdio.o ../build/assert.o -o prog_no_arg
 #dd if=prog_no_arg of=/home/work/my_workspace/bochs/hd60M.img \
 #   bs=512 count=10 seek=300 conv=notrunc
-	$(GCC) -m32 -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -I ./lib -o $(BUILD_DIR)/prog_no_arg.o command/prog_no_arg.c
-	$(LD) -m elf_i386 -e main $(BUILD_DIR)/prog_no_arg.o $(BUILD_DIR)/string.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/stdio.o $(BUILD_DIR)/assert.o -o $(BUILD_DIR)/prog_no_arg
-	dd if=$(BUILD_DIR)/prog_no_arg of=$(BUILD_DIR)/hd60M.img bs=512 count=10 seek=300 conv=notrunc
+	@$(GCC) -m32 -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -I ./lib -o $(BUILD_DIR)/prog_no_arg.o command/prog_no_arg.c
+	@$(LD) -m elf_i386 -e main $(BUILD_DIR)/prog_no_arg.o $(BUILD_DIR)/string.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/stdio.o $(BUILD_DIR)/assert.o -o $(BUILD_DIR)/prog_no_arg
+	@dd if=$(BUILD_DIR)/prog_no_arg of=$(BUILD_DIR)/hd60M.img bs=512 count=10 seek=300 conv=notrunc
+
+cmds2: all
+#nasm -f elf ./start.S -o ./start.o
+#ar rcs simple_crt.a ../build/string.o ../build/syscall.o \
+#   ../build/stdio.o ../build/assert.o ./start.o
+#gcc -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes \
+#   -Wsystem-headers -I ../lib/ -I ../lib/user -I ../fs prog_arg.c -o prog_arg.o
+#ld prog_arg.o simple_crt.a -o prog_arg
+#dd if=prog_arg of=/home/work/my_workspace/bochs/hd60M.img \
+#   bs=512 count=11 seek=300 conv=notrunc
+	@$(AS) -f elf ./command/start.S -o $(BUILD_DIR)/start.o
+	@$(GCC) -m32 -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -I ./lib -I ./lib/user -I ./fs command/prog_arg.c -o $(BUILD_DIR)/prog_arg.o
+	@$(LD) -m elf_i386 $(BUILD_DIR)/prog_arg.o $(BUILD_DIR)/string.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/stdio.o $(BUILD_DIR)/assert.o $(BUILD_DIR)/start.o -o $(BUILD_DIR)/prog_arg -L$(BUILD_DIR)
+	@dd if=$(BUILD_DIR)/prog_arg of=$(BUILD_DIR)/hd60M.img bs=512 count=11 seek=400 conv=notrunc
