@@ -123,3 +123,7 @@ int32_t chdir(const char *path) { return _syscall1(SYS_CHDIR, path); }
 
 /* 显示任务列表 */
 void ps(void) { _syscall0(SYS_PS); }
+
+int execv(const char *pathname, char **argv) {
+  return _syscall2(SYS_EXECV, pathname, argv);
+}

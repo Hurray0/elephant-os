@@ -5,7 +5,7 @@ ASFLAGS = -f elf
 LDFLAGS = -m elf_i386 -Ttext $(ENTRY_POINT) -e main
 CFLAGS = -m32 -c $(LIB) -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -mno-sse # 这里加上-mno-sse是为了解决macOS下编译时出现的错误
 
-all: $(BUILD_DIR)/hd80M.img $(BUILD_DIR)/hd60M.img debug-asm
+all: $(BUILD_DIR)/hd80M.img $(BUILD_DIR)/hd60M.img cmds debug-asm
 # all: $(BUILD_DIR)/hd60M.img debug-asm
 
 ################ c代码编译 ################
@@ -37,7 +37,8 @@ OBJS = $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/fork.o \
 		$(BUILD_DIR)/assert.o \
 		$(BUILD_DIR)/shell.o \
-		$(BUILD_DIR)/buildin_cmd.o
+		$(BUILD_DIR)/buildin_cmd.o \
+		$(BUILD_DIR)/exec.o
 
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h kernel/memory.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
@@ -90,7 +91,7 @@ $(BUILD_DIR)/process.o: userprog/process.c userprog/process.h device/console.h k
 $(BUILD_DIR)/syscall.o: lib/user/syscall.c lib/user/syscall.h lib/stdint.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/syscall-init.o: userprog/syscall-init.c userprog/syscall-init.h lib/stdint.h lib/kernel/print.h lib/user/syscall.h device/console.h lib/string.h fs/fs.h
+$(BUILD_DIR)/syscall-init.o: userprog/syscall-init.c userprog/syscall-init.h lib/stdint.h lib/kernel/print.h lib/user/syscall.h device/console.h lib/string.h fs/fs.h userprog/exec.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/stdio.o: lib/stdio.c lib/stdio.h lib/user/syscall.h lib/string.h
@@ -130,6 +131,9 @@ $(BUILD_DIR)/shell.o: shell/shell.c shell/shell.h lib/user/assert.h fs/file.h fs
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/buildin_cmd.o: shell/buildin_cmd.c shell/buildin_cmd.h lib/user/assert.h fs/dir.h fs/fs.h kernel/global.h shell/shell.h lib/stdint.h lib/stdio.h lib/string.h lib/user/syscall.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/exec.o: userprog/exec.c userprog/exec.h fs/fs.h kernel/global.h kernel/memory.h lib/kernel/stdio-kernel.h lib/string.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 ################ 汇编代码编译 ################
@@ -174,10 +178,20 @@ partitionDisk-mac: $(BUILD_DIR)/hd80M_no.img
 	hdiutil pmap $(BUILD_DIR)/hd80M_no.img
 	@mv $(BUILD_DIR)/hd80M_no.img $(BUILD_DIR)/hd80M.img
 
-# 还没有测试
 partitionDisk-linux: $(BUILD_DIR)/hd80M_no.img
 	@echo -e "x\nc\n162\nh\n16\nr\nn\np\n1\n2048\n18175\nn\ne\n4\n18432\n163295\nn\n20480\n29551\nn\n32768\n45367\nn\n49152\n70000\nn\n130000\n163295\nt\n5\n66\nt\n6\n66\nt\n7\n66\nt\n8\n66\nw\n" | fdisk $(BUILD_DIR)/hd80M_no.img
 	@mv $(BUILD_DIR)/hd80M_no.img $(BUILD_DIR)/hd80M.img
 
 $(BUILD_DIR)/hd80M.img:
 	make partitionDisk-$(OS)
+
+cmds: all
+#gcc -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes \
+#   -Wsystem-headers -I ../lib -o prog_no_arg.o prog_no_arg.c
+#ld -e main prog_no_arg.o ../build/string.o ../build/syscall.o\
+#   ../build/stdio.o ../build/assert.o -o prog_no_arg
+#dd if=prog_no_arg of=/home/work/my_workspace/bochs/hd60M.img \
+#   bs=512 count=10 seek=300 conv=notrunc
+	$(GCC) -m32 -Wall -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes -Wsystem-headers -I ./lib -o $(BUILD_DIR)/prog_no_arg.o command/prog_no_arg.c
+	$(LD) -m elf_i386 -e main $(BUILD_DIR)/prog_no_arg.o $(BUILD_DIR)/string.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/stdio.o $(BUILD_DIR)/assert.o -o $(BUILD_DIR)/prog_no_arg
+	dd if=$(BUILD_DIR)/prog_no_arg of=$(BUILD_DIR)/hd60M.img bs=512 count=10 seek=300 conv=notrunc
