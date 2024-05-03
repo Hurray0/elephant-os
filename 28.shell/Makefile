@@ -1,5 +1,5 @@
 include ../include.mk
-LIB = -I ./lib/kernel/ -I ./lib/ -I ./kernel/ -I ./thread/ -I ./device/ -I ./userprog/ -I ./lib/user/ -I ./fs/
+LIB = -I ./lib/kernel/ -I ./lib/ -I ./kernel/ -I ./thread/ -I ./device/ -I ./userprog/ -I ./lib/user/ -I ./fs/ -I ./shell/
 ASLIB = -I ./boot/include/
 ASFLAGS = -f elf
 LDFLAGS = -m elf_i386 -Ttext $(ENTRY_POINT) -e main
@@ -34,7 +34,9 @@ OBJS = $(BUILD_DIR)/main.o \
 		$(BUILD_DIR)/inode.o \
 		$(BUILD_DIR)/file.o \
 		$(BUILD_DIR)/dir.o \
-		$(BUILD_DIR)/fork.o
+		$(BUILD_DIR)/fork.o \
+		$(BUILD_DIR)/assert.o \
+		$(BUILD_DIR)/shell.o
 
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h kernel/debug.h kernel/init.h lib/string.h kernel/memory.h thread/thread.h
 	@$(GCC) $(CFLAGS) $< -o $@
@@ -105,7 +107,7 @@ $(BUILD_DIR)/stdio-kernel.o: lib/kernel/stdio-kernel.c lib/kernel/stdio-kernel.h
 $(BUILD_DIR)/fs.o: fs/fs.c fs/fs.h kernel/debug.h fs/dir.h kernel/global.h \
 					device/ide.h fs/inode.h lib/kernel/list.h kernel/memory.h \
 					lib/stdint.h lib/kernel/stdio-kernel.h lib/string.h fs/super_block.h \
-					fs/file.h device/console.h
+					fs/file.h device/console.h device/ioqueue.h device/keyboard.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/inode.o: fs/inode.c fs/inode.h kernel/debug.h fs/fs.h kernel/global.h device/ide.h lib/kernel/list.h kernel/memory.h lib/stdint.h lib/kernel/stdio-kernel.h lib/string.h fs/super_block.h
@@ -118,6 +120,12 @@ $(BUILD_DIR)/dir.o: fs/dir.c fs/dir.h kernel/debug.h fs/file.h fs/fs.h kernel/gl
 	@$(GCC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/fork.o: userprog/fork.c userprog/fork.h kernel/debug.h fs/file.h kernel/interrupt.h kernel/memory.h userprog/process.h lib/string.h thread/thread.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/assert.o: lib/user/assert.c lib/user/assert.h lib/stdio.h
+	@$(GCC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/shell.o: shell/shell.c shell/shell.h lib/user/assert.h fs/file.h fs/fs.h kernel/global.h lib/stdint.h lib/stdio.h lib/string.h lib/user/syscall.h
 	@$(GCC) $(CFLAGS) $< -o $@
 
 ################ 汇编代码编译 ################

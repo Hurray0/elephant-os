@@ -1,15 +1,15 @@
 #include "syscall-init.h"
+#include "console.h"
+#include "fork.h"
+#include "fs.h"
+#include "memory.h"
 #include "print.h"
 #include "stdint.h"
+#include "string.h"
 #include "syscall.h"
 #include "thread.h"
-#include "console.h"
-#include "string.h"
-#include "memory.h"
-#include "fs.h"
-#include "fork.h"
 
-#define syscall_nr 32  // 系统调用数量
+#define syscall_nr 32 // 系统调用数量
 typedef void *syscall;
 syscall syscall_table[syscall_nr];
 
@@ -23,6 +23,9 @@ void syscall_init(void) {
   syscall_table[SYS_WRITE] = sys_write;
   syscall_table[SYS_MALLOC] = sys_malloc;
   syscall_table[SYS_FREE] = sys_free;
-  syscall_table[SYS_FORK]    = sys_fork;
+  syscall_table[SYS_FORK] = sys_fork;
+  syscall_table[SYS_READ] = sys_read;
+  syscall_table[SYS_PUTCHAR] = sys_putchar;
+  syscall_table[SYS_CLEAR] = cls_screen;
   put_str("syscall_init done\n");
 }

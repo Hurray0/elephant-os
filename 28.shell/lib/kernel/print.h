@@ -20,4 +20,6 @@ void put_int(uint32_t num);
 
 void set_cursor(uint32_t cursor_pos);
 
+void cls_screen(void);
+
 #endif
