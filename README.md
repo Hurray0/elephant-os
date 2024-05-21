@@ -1,7 +1,7 @@
 # manualOS
-Hand made Operating System
-
 Based on 《操作系统-真象还原》 郑钢 著
+
+keyword: `MacOS`/`CentOS`; `bochs`/`qemu`/`virtualbox`
 
 ## 使用方法
 每个数字开头的文件夹都是一个独立的项目，都可以进入子文件夹使用`make`编译，`make run`运行。
